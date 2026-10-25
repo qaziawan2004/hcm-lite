@@ -32,15 +32,20 @@ test('login rejects bad password; passwords are hashed', async () => {
   assert.equal((await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'wrong' })).status, 401);
   const u = await mongoose.connection.db.collection('users').findOne({ email: 'a@t.com' });
   assert.notEqual(u.password, 'Password1'); assert.match(u.password, /^\$2[aby]\$/);
+  assert.equal((await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' })).body.user.role, 'admin');
 });
 
 test('admin creates HR and employee; HR cannot create admin/HR', async () => {
   const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1' });
   assert.equal(hr.status, 201);
-  tok.hr = (await api.post('/api/auth/login').send({ email: 'hr@t.com', password: 'Password1' })).body.token;
+  const hrLogin = await api.post('/api/auth/login').send({ email: 'hr@t.com', password: 'Password1' });
+  assert.equal(hrLogin.body.user.role, 'hr');
+  tok.hr = hrLogin.body.token;
   const emp = await api.post('/api/employees').set(as('hr')).send({ name: 'Emp', email: 'e@t.com', password: 'Password1' });
   assert.equal(emp.status, 201);
-  tok.emp = (await api.post('/api/auth/login').send({ email: 'e@t.com', password: 'Password1' })).body.token;
+  const employeeLogin = await api.post('/api/auth/login').send({ email: 'e@t.com', password: 'Password1' });
+  assert.equal(employeeLogin.body.user.role, 'employee');
+  tok.emp = employeeLogin.body.token;
   tok.empId = emp.body.user._id;
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad', email: 'b@t.com', role: 'hr', password: 'Password1' })).status, 403);
 });

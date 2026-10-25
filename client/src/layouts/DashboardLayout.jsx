@@ -57,7 +57,7 @@ export default function DashboardLayout() {
               </div>) : null;
           })}
         </nav>
-        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name}</strong><br /><small>{user.role === 'hr' ? 'HR' : user.role[0].toUpperCase() + user.role.slice(1)}</small></div></div>
+        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name}</strong><br /><small>Signed in as {user.role === 'hr' ? 'HR' : user.role[0].toUpperCase() + user.role.slice(1)}</small></div></div>
       </aside>
       <div className="main">
         <header className="top">

@@ -69,7 +69,12 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="page-head"><div><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.name.split(' ')[0]}</h1><p className="muted">{d.role === 'employee' ? 'Here is your day at a glance.' : `Company overview for ${fmtDate(d.date)}.`}</p></div></div>
+      <div className="page-head">
+        <div><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.name.split(' ')[0]}</h1><p className="muted">{d.role === 'employee' ? 'Here is your day at a glance.' : `Company overview for ${fmtDate(d.date)}.`}</p></div>
+        <button className="btn ghost sm" onClick={reload} disabled={loading} aria-label="Refresh dashboard data">
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
       <div className="grid" style={{ gap: '1.1rem' }}>
         <CheckInCard onChange={reload} />
         {d.role !== 'employee' && <>
