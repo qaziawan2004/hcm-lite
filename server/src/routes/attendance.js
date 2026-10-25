@@ -42,8 +42,8 @@ r.get('/my', asyncHandler(async (req, res) => {
     hours: Math.round(items.reduce((t, i) => t + i.hours, 0) * 10) / 10 } });
 }));
 
-// HR / admin report. ?date=YYYY-MM-DD or ?month=YYYY-MM, optional ?userId=
-r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
+// Admin report. ?date=YYYY-MM-DD or ?month=YYYY-MM, optional ?userId=
+r.get('/', authorize('admin'), asyncHandler(async (req, res) => {
   const { date, month, userId } = req.query;
   const { page, limit, skip } = paginate({ ...req.query, limit: req.query.limit || 20 });
   const f = {};

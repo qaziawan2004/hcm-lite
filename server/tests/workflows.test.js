@@ -200,10 +200,24 @@ test('salary → payroll → payslip PDF, employee sees only own and only once p
   assert.equal((await api.post('/api/payroll/run').set(as('hr')).send({ month })).body.created, 0);
   const id = payroll.body.items[0]._id;
   assert.ok(payroll.body.items[0].netPay > 0);
+  const changedSalary = await api.post('/api/salary').set(as('hr')).send({
+    userId: tok.empId, basic: 600000, effectiveFrom, allowances: [{ name: 'Bonus', amount: 25000 }],
+  });
+  assert.equal(changedSalary.status, 201);
+  assert.equal(changedSalary.body.refreshedPayroll, 1);
+  const refreshedPayroll = await api.get(`/api/payroll?month=${month}`).set(as('hr'));
+  assert.equal(refreshedPayroll.body.items[0].basic, 600000);
+  assert.equal(refreshedPayroll.body.items[0].allowances[0].amount, 25000);
+  assert.equal(refreshedPayroll.body.items[0].gross, 625000);
+  assert.ok(refreshedPayroll.body.items[0].netPay > payroll.body.items[0].netPay);
   assert.equal((await api.get(`/api/payroll/${id}/payslip`).set(as('emp'))).status, 403);   // not paid yet
   assert.equal((await api.post('/api/payroll/mark-paid').set(as('hr')).send({ month })).status, 200);
   const pdf = await api.get(`/api/payroll/${id}/payslip`).set(as('emp'));
   assert.equal(pdf.status, 200); assert.match(pdf.headers['content-type'], /pdf/);
+  assert.equal((await api.post('/api/salary').set(as('hr')).send({
+    userId: tok.empId, basic: 700000, effectiveFrom,
+  })).body.refreshedPayroll, 0);
+  assert.equal((await api.get(`/api/payroll?month=${month}`).set(as('hr'))).body.items[0].basic, 600000);
   assert.equal((await api.get(`/api/payroll/${id}/payslip`).set(as('admin'))).status, 200);
   assert.equal((await api.get('/api/payroll/my').set(as('emp'))).body.items.length, 1);
 });
@@ -220,6 +234,11 @@ test('dashboards compute from DB; AI leave draft works without API key', async (
   const d = await api.get('/api/dashboard').set(as('admin'));
   assert.equal(d.body.totalEmployees, 3); assert.equal(d.body.presentToday >= 1, true);
   assert.equal((await api.get('/api/dashboard').set(as('emp'))).body.role, 'employee');
+  const hrDashboard = await api.get('/api/dashboard').set(as('hr'));
+  assert.equal(hrDashboard.body.role, 'hr');
+  assert.equal(Object.hasOwn(hrDashboard.body, 'totalEmployees'), false);
+  assert.equal((await api.get('/api/attendance').set(as('hr'))).status, 403);
+  assert.equal((await api.get('/api/attendance').set(as('admin'))).status, 200);
   const draft = await api.post('/api/ai/leave-draft').set(as('emp')).send({ text: 'I have a fever, need sick leave tomorrow' });
   assert.equal(draft.body.draft.type, 'sick');
   assert.equal((await api.post('/api/ai/chat').set(as('emp')).send({ messages: [{ role: 'user', content: 'hi' }] })).status, 503);

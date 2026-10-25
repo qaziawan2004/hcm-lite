@@ -49,3 +49,37 @@ export async function runPayroll(month, actorId) {
   }
   return out;
 }
+
+export async function refreshGeneratedPayroll(userId, effectiveFrom) {
+  const payrolls = await Payroll.find({
+    user: userId,
+    status: 'generated',
+    month: { $gte: effectiveFrom.slice(0, 7) },
+  });
+  let updated = 0;
+
+  for (const payroll of payrolls) {
+    const { last } = monthRange(payroll.month);
+    const salary = await Salary.findOne({ user: userId, effectiveFrom: { $lte: last } })
+      .sort({ effectiveFrom: -1, createdAt: -1, _id: -1 });
+    if (!salary) continue;
+
+    const gross = salary.basic + sum(salary.allowances);
+    const attendanceDeduction = payroll.workingDays
+      ? round((gross / payroll.workingDays) * payroll.unpaidDays)
+      : 0;
+    const totalDeductions = sum(salary.deductions) + attendanceDeduction;
+
+    payroll.basic = salary.basic;
+    payroll.allowances = salary.allowances;
+    payroll.deductions = salary.deductions;
+    payroll.gross = gross;
+    payroll.attendanceDeduction = attendanceDeduction;
+    payroll.totalDeductions = totalDeductions;
+    payroll.netPay = Math.max(0, round(gross - totalDeductions));
+    await payroll.save();
+    updated++;
+  }
+
+  return updated;
+}

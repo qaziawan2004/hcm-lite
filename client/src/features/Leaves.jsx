@@ -22,7 +22,7 @@ function ApplyForm({ onDone, balance }) {
     catch (x) { setErr(errMsg(x)); } finally { setBusy(false); }
   };
   return (
-    <form className="card" style={{ maxWidth: 560 }} onSubmit={submit}>
+    <form className="card leave-form" onSubmit={submit}>
       <h2>Apply for leave</h2>
       {prefilled && <div className="notice">Pre-filled by the AI assistant. Check the details before you submit.</div>}
       {err && <div className="error" role="alert">{err}</div>}
@@ -82,7 +82,7 @@ export default function Leaves() {
         <button className={tab === 'mine' ? 'on' : ''} onClick={() => go('mine')}>My requests</button>
         {isStaff(user) && <button className={tab === 'approvals' ? 'on' : ''} onClick={() => go('approvals')}>Approvals</button>}
       </div>
-      {tab === 'apply' && <div className="grid" style={{ gridTemplateColumns: 'minmax(0,560px) minmax(220px,300px)', alignItems: 'start' }}>
+      {tab === 'apply' && <div className="grid leave-layout">
         <ApplyForm balance={bal.data?.balance} onDone={() => { mine.reload(); bal.reload(); refresh(); go('mine'); }} />
         <div className="card"><h2>Your balance</h2>{Object.entries(bal.data?.balance || {}).map(([k, v]) => <div className="bal" key={k}><span>{cap(k)}</span><strong>{v} days</strong></div>)}</div></div>}
       {tab === 'mine' && (mine.loading ? <Loader /> : <MyLeaves data={mine.data.items} reload={() => { mine.reload(); bal.reload(); }} />)}

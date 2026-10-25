@@ -66,7 +66,7 @@ export default function Dashboard() {
   if (error) return <div className="error">{error}</div>;
   if (!d) return <Loader />;
   const cur = company?.currency;
-  const emp = d.role === 'employee' ? d : d.mine;
+  const emp = d.role === 'admin' ? d.mine : d;
   const firstName = typeof user?.name === 'string' && user.name.trim()
     ? user.name.trim().split(/\s+/)[0]
     : 'there';
@@ -74,14 +74,14 @@ export default function Dashboard() {
   return (
     <>
       <div className="page-head">
-        <div><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {firstName}</h1><p className="muted">{d.role === 'employee' ? 'Here is your day at a glance.' : `Company overview for ${fmtDate(d.date)}.`}</p></div>
+        <div><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {firstName}</h1><p className="muted">{d.role === 'admin' ? `Company overview for ${fmtDate(d.date)}.` : 'Here is your day at a glance.'}</p></div>
         <button className="btn ghost sm" onClick={reload} disabled={loading} aria-label="Refresh dashboard data">
           {loading ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
       <div className="grid" style={{ gap: '1.1rem' }}>
         <CheckInCard onChange={reload} />
-        {d.role !== 'employee' && <>
+        {d.role === 'admin' && <>
           <div className="grid g4">
             <Stat label="Active employees" value={d.totalEmployees} tone="info" />
             <Stat label="Present today" value={d.presentToday} tone="good" sub={d.weekend ? 'Weekend' : undefined} />
@@ -109,10 +109,10 @@ export default function Dashboard() {
             <div className="bal"><span>Hours worked</span><strong>{emp.monthHours}</strong></div><div className="bal"><span>Pending leave requests</span><strong>{emp.pendingLeaves}</strong></div>
             {emp.latestPayslip && <div className="row between" style={{ marginTop: '.8rem' }}><span>Latest payslip: {monthLabel(emp.latestPayslip.month)}</span><button className="btn ghost sm" onClick={() => downloadPayslip(emp.latestPayslip._id, `payslip-${emp.latestPayslip.month}.pdf`)}>Download PDF</button></div>}
           </div>
-          {d.role === 'employee' && <Announcements items={d.announcements} />}
-          {d.role === 'employee' && d.upcomingLeaves?.length > 0 && <div className="card"><h2>Upcoming approved leave</h2>{d.upcomingLeaves.map((l) => <div className="bal" key={l._id}><span>{cap(l.type)}: {fmtDate(l.from)} – {fmtDate(l.to)}</span><strong>{l.days}d</strong></div>)}</div>}
+          {d.role !== 'admin' && <Announcements items={d.announcements} />}
+          {d.role !== 'admin' && d.upcomingLeaves?.length > 0 && <div className="card"><h2>Upcoming approved leave</h2>{d.upcomingLeaves.map((l) => <div className="bal" key={l._id}><span>{cap(l.type)}: {fmtDate(l.from)} – {fmtDate(l.to)}</span><strong>{l.days}d</strong></div>)}</div>}
         </div>
-        {d.role === 'employee' && <AISummary />}
+        {d.role !== 'admin' && <AISummary />}
       </div>
     </>
   );

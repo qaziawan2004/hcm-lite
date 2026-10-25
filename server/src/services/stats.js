@@ -53,8 +53,9 @@ export async function employeeStats(user) {
 }
 
 export async function dashboardFor(user) {
-  const announcements = await Announcement.find(user.role === 'employee' ? { audience: { $in: ['all', 'employee'] } } : {}).sort({ pinned: -1, createdAt: -1 }).limit(3).select('title body createdAt');
-  if (user.role === 'employee') return { role: 'employee', ...(await employeeStats(user)), announcements };
+  const audience = user.role === 'admin' ? {} : { audience: { $in: ['all', user.role] } };
+  const announcements = await Announcement.find(audience).sort({ pinned: -1, createdAt: -1 }).limit(3).select('title body createdAt');
+  if (user.role !== 'admin') return { role: user.role, ...(await employeeStats(user)), announcements };
   const [company, mine] = await Promise.all([companyStats(), employeeStats(user)]);
   return { role: user.role, ...company, mine, announcements };
 }

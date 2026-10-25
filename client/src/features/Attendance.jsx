@@ -3,7 +3,7 @@ import useApi from '../utils/useApi.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Badge, Empty, Loader, PageHeader, Pager, Stat } from '../components/ui.jsx';
 import { CheckInCard } from './Dashboard.jsx';
-import { fmtDate, fmtTime, thisMonth, isStaff } from '../utils/format.js';
+import { fmtDate, fmtTime, thisMonth } from '../utils/format.js';
 
 export default function Attendance() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function Attendance() {
       <PageHeader title="Attendance" sub="Check in when you start and check out when you finish." />
       <CheckInCard onChange={() => { mine.reload(); all.reload(); }} />
       <div style={{ height: '1.2rem' }} />
-      {isStaff(user) && <div className="tabs"><button className={tab === 'mine' ? 'on' : ''} onClick={() => setTab('mine')}>My attendance</button><button className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>All employees</button></div>}
+      {user.role === 'admin' && <div className="tabs"><button className={tab === 'mine' ? 'on' : ''} onClick={() => setTab('mine')}>My attendance</button><button className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>All employees</button></div>}
       <div className="filters">
         <input type="month" value={month} onChange={(e) => { setMonth(e.target.value || thisMonth()); setPage(1); }} aria-label="Month" />
         {tab === 'all' && <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(1); }} aria-label="Specific date" />}
