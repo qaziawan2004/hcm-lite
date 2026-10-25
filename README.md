@@ -18,7 +18,7 @@ cd server
 cp .env.example .env        # set MONGODB_URI, JWT_SECRET, and SMTP settings (ANTHROPIC_API_KEY is optional)
 npm install
 npm run seed                # optional demo data (wipes the DB!)
-npm run dev                 # http://localhost:5000
+npm run dev                 # http://localhost:3000
 
 # 2. Frontend (new terminal)
 cd client
@@ -83,6 +83,8 @@ Nobody can approve their own leave. HR and admin leave requests are approved by 
 Deploy the frontend and API together as **one Vercel project** so the app and `/api` use the same live origin. The repository-root `vercel.json` builds the Vite client and routes API requests to the Express serverless function.
 
 **Database:** Use MongoDB Atlas or another hosted MongoDB service. Configure its network access to allow connections from Vercel.
+
+If local Node startup fails with `querySrv ECONNREFUSED` while Windows DNS lookups work, set `MONGODB_DNS_SERVERS` in `server/.env` to a reachable DNS resolver (comma-separated if needed). Leave this unset on deployments unless their runtime specifically needs it.
 
 1. Use Node.js 20 or newer for the server runtime. Vercel can configure the runtime under Project Settings.
 2. In Vercel, import this repository. For the existing frontend project, change **Root Directory** from `client` to the repository root (`.`). Do not deploy this setup with `client` as the root directory.
