@@ -18,7 +18,7 @@ cd server
 cp .env.example .env        # set MONGODB_URI, JWT_SECRET, and SMTP settings (ANTHROPIC_API_KEY is optional)
 npm install
 npm run seed                # optional demo data (wipes the DB!)
-npm run dev                 # http://localhost:5000
+npm run dev                 # http://localhost:3000
 
 # 2. Frontend (new terminal)
 cd client
@@ -26,6 +26,8 @@ cp .env.example .env        # set VITE_SHOW_DEMO=true to show demo logins on the
 npm install
 npm run dev                 # http://localhost:5173
 ```
+
+The Vite development proxy forwards `/api` to `http://localhost:3000`, matching the server's default `PORT`. If MongoDB Atlas SRV DNS lookups fail on your network, set `MONGODB_DNS_SERVERS` in the server `.env` to a comma-separated list of DNS resolver IP addresses; the server applies these before connecting.
 
 **Fresh setup (no seed):** open the app on an empty database. The sign-in page turns into "Set up your company" and creates the company plus the first admin. After that, the admin registers HR and employees.
 
