@@ -16,10 +16,33 @@ const nextEmployeeId = async () => {
   const n = last ? parseInt(last.employeeId.slice(4)) + 1 : 1;
   return `EMP-${String(n).padStart(4, '0')}`;
 };
+const assignMissingEmployeeIds = async () => {
+  const missing = await User.find({ employeeId: { $in: [null, ''] } })
+    .select('_id')
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
+
+  for (const { _id } of missing) {
+    let assigned = false;
+    while (!assigned) {
+      const employeeId = await nextEmployeeId();
+      try {
+        const result = await User.updateOne(
+          { _id, employeeId: { $in: [null, ''] } },
+          { $set: { employeeId } }
+        );
+        assigned = result.matchedCount === 0 || result.modifiedCount === 1;
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+      }
+    }
+  }
+};
 // HR may only manage plain employees; admins manage everyone.
 const canManage = (actor, target) => actor.role === 'admin' || target.role === 'employee';
 
 r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
+  await assignMissingEmployeeIds();
   const { q, department, status, role } = req.query;
   const { page, limit, skip } = paginate(req.query);
   const f = {};

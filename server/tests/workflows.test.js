@@ -123,6 +123,28 @@ test('admin creates HR and employee; HR cannot create admin/HR', async () => {
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad', email: 'b@t.com', role: 'hr', password: 'Password1' })).status, 403);
 });
 
+test('employee list assigns IDs to legacy employees without IDs', async () => {
+  const User = (await import('../src/models/User.js')).default;
+  await User.create([
+    { name: 'Legacy One', email: 'legacy-one@t.com', password: 'Password1' },
+    { name: 'Legacy Two', email: 'legacy-two@t.com', password: 'Password1' },
+  ]);
+
+  try {
+    const response = await api.get('/api/employees').set(as('admin'));
+    assert.equal(response.status, 200);
+    assert.deepEqual(
+      response.body.items
+        .filter((user) => user.email.startsWith('legacy-'))
+        .map((user) => user.employeeId)
+        .sort(),
+      ['EMP-0004', 'EMP-0005']
+    );
+  } finally {
+    await User.deleteMany({ email: { $in: ['legacy-one@t.com', 'legacy-two@t.com'] } });
+  }
+});
+
 test('permissions: employee blocked from admin/HR endpoints, no token blocked', async () => {
   for (const [m, p] of [['get', '/api/employees'], ['get', '/api/audit-logs'], ['get', '/api/leaves'], ['post', '/api/payroll/run'], ['get', '/api/salary'], ['post', '/api/announcements'], ['put', '/api/company']])
     assert.equal((await api[m](p).set(as('emp'))).status, 403, `${m} ${p}`);
