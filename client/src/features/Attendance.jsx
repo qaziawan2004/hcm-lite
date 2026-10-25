@@ -40,6 +40,6 @@ function Table({ rows, showUser }) {
   if (!rows.length) return <div className="card"><Empty title="No attendance records">Nothing recorded for this period.</Empty></div>;
   return (
     <div className="table-wrap"><table className="tbl"><thead><tr><th>Date</th>{showUser && <><th>Employee</th><th>Department</th></>}<th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead>
-      <tbody>{rows.map((r) => <tr key={r._id}><td>{fmtDate(r.date)}</td>{showUser && <><td>{r.user?.name} <small>{r.user?.employeeId}</small></td><td>{r.user?.department}</td></>}<td>{fmtTime(r.checkIn)}</td><td>{fmtTime(r.checkOut)}</td><td>{r.hours || '—'}</td><td><Badge>{r.status}</Badge></td></tr>)}</tbody></table></div>
+      <tbody>{rows.map((r) => <tr key={r._id}><td data-label="Date">{fmtDate(r.date)}</td>{showUser && <><td data-label="Employee">{r.user?.name} <small>{r.user?.employeeId}</small></td><td data-label="Department">{r.user?.department}</td></>}<td data-label="Check in">{fmtTime(r.checkIn)}</td><td data-label="Check out">{fmtTime(r.checkOut)}</td><td data-label="Hours">{r.hours || '—'}</td><td data-label="Status"><Badge>{r.status}</Badge></td></tr>)}</tbody></table></div>
   );
 }

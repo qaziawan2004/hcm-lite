@@ -15,7 +15,7 @@ export default function AuditLogs() {
       </div>
       {loading && !data ? <Loader /> : !data.items.length ? <div className="card"><Empty title="No log entries match" /></div> : <>
         <div className="table-wrap"><table className="tbl"><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Details</th></tr></thead>
-          <tbody>{data.items.map((l) => <tr key={l._id}><td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(l.createdAt)}</td><td>{l.actorName || '—'} <Badge>{l.role || 'system'}</Badge></td><td><code>{l.action}</code></td><td>{l.details}</td></tr>)}</tbody></table></div>
+          <tbody>{data.items.map((l) => <tr key={l._id}><td data-label="When" style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(l.createdAt)}</td><td data-label="Who">{l.actorName || '—'} <Badge>{l.role || 'system'}</Badge></td><td data-label="Action"><code>{l.action}</code></td><td data-label="Details">{l.details}</td></tr>)}</tbody></table></div>
         <Pager page={data.page} pages={data.pages} onChange={setPage} /></>}
     </>
   );

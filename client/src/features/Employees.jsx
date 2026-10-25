@@ -66,8 +66,8 @@ export default function Employees() {
       {error && <div className="error">{error}</div>}
       {loading && !data ? <Loader /> : !data?.items.length ? <div className="card"><Empty title="No employees found">Try a different search, or register a new employee.</Empty></div> : <>
         <div className="table-wrap"><table className="tbl"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Role</th><th>Joined</th><th>Status</th><th /></tr></thead>
-          <tbody>{data.items.map((u) => <tr key={u._id}><td>{u.employeeId}</td><td>{u.name}<br /><small>{u.email}</small></td><td>{u.department || '—'}</td><td>{u.designation || '—'}</td><td><Badge>{u.role}</Badge></td><td>{fmtDate(u.joinDate)}</td><td><Badge>{u.status}</Badge></td>
-            <td>{canManage(me, u) && <div className="row gap wrap"><button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
+          <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="ID">{u.employeeId}</td><td data-label="Name">{u.name}<br /><small>{u.email}</small></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role"><Badge>{u.role}</Badge></td><td data-label="Joined">{fmtDate(u.joinDate)}</td><td data-label="Status"><Badge>{u.status}</Badge></td>
+            <td data-label="">{canManage(me, u) && <div className="row gap wrap"><button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
               {u._id !== me._id && <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'status' })}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>}
               <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'reset' })}>Reset password</button></div>}</td></tr>)}</tbody></table></div>
         <Pager page={data.page} pages={data.pages} onChange={setPage} /></>}

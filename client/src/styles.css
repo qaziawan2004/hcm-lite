@@ -188,6 +188,20 @@ a { color: var(--pine-3); } :focus-visible { outline-color: var(--pine-3); }
   .leave-layout { grid-template-columns: minmax(0, 1fr); }
 }
 
+@media (max-width: 600px) {
+  .table-wrap { overflow: visible; border: 0; background: transparent; box-shadow: none; }
+  table.tbl, .tbl tbody { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tbody { display: grid; gap: .8rem; }
+  .tbl tr { display: block; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
+  .tbl td { display: grid; grid-template-columns: minmax(92px, 38%) minmax(0, 1fr); gap: .6rem; align-items: start; padding: .65rem .8rem; text-align: left; overflow-wrap: anywhere; border-bottom: 1px solid var(--line); }
+  .tbl td::before { content: attr(data-label); color: var(--muted); font-size: .78rem; font-weight: 700; }
+  .tbl td[data-label=""] { display: block; }
+  .tbl td[data-label=""]::before { content: none; }
+  .tbl .num { text-align: left; }
+  .tbl td[colspan] { display: block; }
+}
+
 @media (max-width: 380px) {
   .top { flex-wrap: wrap; }
   .top > .row { width: 100%; justify-content: space-between; }

@@ -40,8 +40,8 @@ function MyLeaves({ reload, data }) {
   const cancel = async (id) => { try { await api.patch(`/leaves/${id}/cancel`); toast('Request cancelled.'); reload(); } catch (e) { toast(errMsg(e), 'err'); } };
   if (!data.length) return <div className="card"><Empty title="No leave requests yet">Apply for leave from the first tab.</Empty></div>;
   return <div className="table-wrap"><table className="tbl"><thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Reason</th><th>Status</th><th>Reviewed by</th><th /></tr></thead>
-    <tbody>{data.map((l) => <tr key={l._id}><td>{cap(l.type)}</td><td>{fmtDate(l.from)} – {fmtDate(l.to)}</td><td>{l.days}</td><td>{l.reason}</td><td><Badge>{l.status}</Badge></td><td>{l.reviewedBy?.name || '—'}{l.reviewNote && <><br /><small>{l.reviewNote}</small></>}</td>
-      <td>{l.status === 'pending' && <button className="btn ghost sm" onClick={() => cancel(l._id)}>Cancel</button>}</td></tr>)}</tbody></table></div>;
+    <tbody>{data.map((l) => <tr key={l._id}><td data-label="Type">{cap(l.type)}</td><td data-label="Dates">{fmtDate(l.from)} – {fmtDate(l.to)}</td><td data-label="Days">{l.days}</td><td data-label="Reason">{l.reason}</td><td data-label="Status"><Badge>{l.status}</Badge></td><td data-label="Reviewed by">{l.reviewedBy?.name || '—'}{l.reviewNote && <><br /><small>{l.reviewNote}</small></>}</td>
+      <td data-label="">{l.status === 'pending' && <button className="btn ghost sm" onClick={() => cancel(l._id)}>Cancel</button>}</td></tr>)}</tbody></table></div>;
 }
 
 function Approvals() {
@@ -57,8 +57,8 @@ function Approvals() {
     <div className="filters"><select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status filter"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All</option></select></div>
     {loading ? <Loader /> : !data.items.length ? <div className="card"><Empty title="Nothing here">No leave requests match this filter.</Empty></div> : <>
       <div className="table-wrap"><table className="tbl"><thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Reason</th><th>Status</th><th /></tr></thead>
-        <tbody>{data.items.map((l) => <tr key={l._id}><td>{l.user?.name}<br /><small>{l.user?.department} · {l.user?.role}</small></td><td>{cap(l.type)}</td><td>{fmtDate(l.from)} – {fmtDate(l.to)}</td><td>{l.days}</td><td>{l.reason}</td><td><Badge>{l.status}</Badge></td>
-          <td>{l.status === 'pending' && <div className="row gap"><button className="btn sm" onClick={() => setDlg({ leave: l, decision: 'approved' })}>Approve</button><button className="btn danger sm" onClick={() => setDlg({ leave: l, decision: 'rejected' })}>Reject</button></div>}</td></tr>)}</tbody></table></div>
+        <tbody>{data.items.map((l) => <tr key={l._id}><td data-label="Employee">{l.user?.name}<br /><small>{l.user?.department} · {l.user?.role}</small></td><td data-label="Type">{cap(l.type)}</td><td data-label="Dates">{fmtDate(l.from)} – {fmtDate(l.to)}</td><td data-label="Days">{l.days}</td><td data-label="Reason">{l.reason}</td><td data-label="Status"><Badge>{l.status}</Badge></td>
+          <td data-label="">{l.status === 'pending' && <div className="row gap"><button className="btn sm" onClick={() => setDlg({ leave: l, decision: 'approved' })}>Approve</button><button className="btn danger sm" onClick={() => setDlg({ leave: l, decision: 'rejected' })}>Reject</button></div>}</td></tr>)}</tbody></table></div>
       <Pager page={data.page} pages={data.pages} onChange={setPage} /></>}
     {dlg && <Modal title={`${dlg.decision === 'approved' ? 'Approve' : 'Reject'} leave for ${dlg.leave.user?.name}`} onClose={() => setDlg(null)}>
       <p>{cap(dlg.leave.type)} leave, {fmtDate(dlg.leave.from)} – {fmtDate(dlg.leave.to)} ({dlg.leave.days} working days).</p>

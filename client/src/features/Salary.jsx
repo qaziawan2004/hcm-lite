@@ -56,7 +56,7 @@ function History({ row, onClose }) {
   return (
     <Modal title={`Salary history: ${row.user.name}`} onClose={onClose} wide>
       {loading ? <Loader /> : !data.items.length ? <Empty title="No salary versions yet" /> : <div className="table-wrap"><table className="tbl"><thead><tr><th>Effective</th><th className="num">Basic</th><th className="num">Allowances</th><th className="num">Deductions</th><th>Set by</th></tr></thead>
-        <tbody>{data.items.map((s) => <tr key={s._id}><td>{fmtDate(s.effectiveFrom)}</td><td className="num">{money(s.basic)}</td><td className="num">{money(sum(s.allowances))}</td><td className="num">{money(sum(s.deductions))}</td><td>{s.createdBy?.name}</td></tr>)}</tbody></table></div>}
+        <tbody>{data.items.map((s) => <tr key={s._id}><td data-label="Effective">{fmtDate(s.effectiveFrom)}</td><td data-label="Basic" className="num">{money(s.basic)}</td><td data-label="Allowances" className="num">{money(sum(s.allowances))}</td><td data-label="Deductions" className="num">{money(sum(s.deductions))}</td><td data-label="Set by">{s.createdBy?.name}</td></tr>)}</tbody></table></div>}
     </Modal>
   );
 }
@@ -70,9 +70,9 @@ export default function Salary() {
     <>
       <PageHeader title="Salaries" sub="Monthly salary structure for each active employee. Payroll uses the latest version in effect." />
       {loading ? <Loader /> : <div className="table-wrap"><table className="tbl"><thead><tr><th>Employee</th><th>Department</th><th className="num">Basic</th><th className="num">Allowances</th><th className="num">Fixed deductions</th><th className="num">Gross</th><th /></tr></thead>
-        <tbody>{data.items.map((r) => <tr key={r.user._id}><td>{r.user.name}<br /><small>{r.user.employeeId}</small></td><td>{r.user.department || '—'}</td>
-          {r.salary ? <><td className="num">{money(r.salary.basic, cur)}</td><td className="num">{money(sum(r.salary.allowances), cur)}</td><td className="num">{money(sum(r.salary.deductions), cur)}</td><td className="num"><strong>{money(r.salary.basic + sum(r.salary.allowances), cur)}</strong></td></> : <td colSpan={4} className="muted">No salary set</td>}
-          <td><div className="row gap"><button className="btn sm" onClick={() => setEdit(r)}>{r.salary ? 'Update' : 'Set salary'}</button>{r.salary && <button className="btn ghost sm" onClick={() => setHist(r)}>History</button>}</div></td></tr>)}</tbody></table></div>}
+        <tbody>{data.items.map((r) => <tr key={r.user._id}><td data-label="Employee">{r.user.name}<br /><small>{r.user.employeeId}</small></td><td data-label="Department">{r.user.department || '—'}</td>
+          {r.salary ? <><td data-label="Basic" className="num">{money(r.salary.basic, cur)}</td><td data-label="Allowances" className="num">{money(sum(r.salary.allowances), cur)}</td><td data-label="Fixed deductions" className="num">{money(sum(r.salary.deductions), cur)}</td><td data-label="Gross" className="num"><strong>{money(r.salary.basic + sum(r.salary.allowances), cur)}</strong></td></> : <td colSpan={4} className="muted">No salary set</td>}
+          <td data-label=""><div className="row gap"><button className="btn sm" onClick={() => setEdit(r)}>{r.salary ? 'Update' : 'Set salary'}</button>{r.salary && <button className="btn ghost sm" onClick={() => setHist(r)}>History</button>}</div></td></tr>)}</tbody></table></div>}
       {edit && <SalaryForm row={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {hist && <History row={hist} onClose={() => setHist(null)} />}
     </>
