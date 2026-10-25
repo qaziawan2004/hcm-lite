@@ -64,13 +64,17 @@ export default function Dashboard() {
   const { data: d, loading, error, reload } = useApi('/dashboard');
   if (loading && !d) return <Loader />;
   if (error) return <div className="error">{error}</div>;
+  if (!d) return <Loader />;
   const cur = company?.currency;
   const emp = d.role === 'employee' ? d : d.mine;
+  const firstName = typeof user?.name === 'string' && user.name.trim()
+    ? user.name.trim().split(/\s+/)[0]
+    : 'there';
 
   return (
     <>
       <div className="page-head">
-        <div><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.name.split(' ')[0]}</h1><p className="muted">{d.role === 'employee' ? 'Here is your day at a glance.' : `Company overview for ${fmtDate(d.date)}.`}</p></div>
+        <div><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {firstName}</h1><p className="muted">{d.role === 'employee' ? 'Here is your day at a glance.' : `Company overview for ${fmtDate(d.date)}.`}</p></div>
         <button className="btn ghost sm" onClick={reload} disabled={loading} aria-label="Refresh dashboard data">
           {loading ? 'Refreshing…' : 'Refresh'}
         </button>

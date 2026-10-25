@@ -25,7 +25,7 @@ const NAV = [
   ['Administration', [['/company', 'Company setup', 'brief', ['admin']], ['/audit', 'Audit logs', 'shield', ['admin']]]],
   ['Account', [['/profile', 'My profile', 'user', ['admin', 'hr', 'employee']]]],
 ];
-const initials = (n = '') => n.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+const initials = (name = '') => name.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).slice(0, 2).join('').toUpperCase();
 
 export default function DashboardLayout() {
   const { user, company, logout } = useAuth();
@@ -57,7 +57,7 @@ export default function DashboardLayout() {
               </div>) : null;
           })}
         </nav>
-        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name}</strong><br /><small>Signed in as {user.role === 'hr' ? 'HR' : user.role[0].toUpperCase() + user.role.slice(1)}</small></div></div>
+        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name || 'Complete your profile'}</strong><br /><small>Signed in as {user.role === 'hr' ? 'HR' : user.role[0].toUpperCase() + user.role.slice(1)}</small></div></div>
       </aside>
       <div className="main">
         <header className="top">

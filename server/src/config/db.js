@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import dns from 'node:dns';
+import { setServers } from 'node:dns';
 import { isIP } from 'node:net';
 
 let connectionPromise;
@@ -15,7 +15,7 @@ function configureDns() {
     throw new Error('MONGODB_DNS_SERVERS must contain comma-separated DNS server IP addresses.');
   }
 
-  dns.setServers(servers);
+  setServers(servers);
 }
 
 export default async function connectDB(uri = process.env.MONGODB_URI) {
