@@ -17,7 +17,8 @@ export async function runPayroll(month, actorId) {
 
   for (const u of users) {
     if (await Payroll.exists({ user: u._id, month })) { out.skippedExisting++; continue; }
-    const salary = await Salary.findOne({ user: u._id, effectiveFrom: { $lte: last } }).sort({ effectiveFrom: -1 });
+    const salary = await Salary.findOne({ user: u._id, effectiveFrom: { $lte: last } })
+      .sort({ effectiveFrom: -1, createdAt: -1, _id: -1 });
     if (!salary) { out.skippedNoSalary.push(u.name); continue; }
 
     const start = u.joinDate > first ? u.joinDate : first;

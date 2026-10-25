@@ -165,12 +165,19 @@ test('HR leave can only be approved by admin', async () => {
 test('salary → payroll → payslip PDF, employee sees only own and only once paid', async () => {
   const month = new Date().toISOString().slice(0, 7);
   assert.equal((await api.post('/api/salary').set(as('hr')).send({ userId: tok.empId, basic: 100000, effectiveFrom: '2020-01-01', allowances: [{ name: 'Rent', amount: 20000 }], deductions: [{ name: 'Tax', amount: 5000 }] })).status, 201);
+  const effectiveFrom = new Date().toLocaleDateString('en-CA', { timeZone: process.env.APP_TZ || 'Asia/Karachi' });
+  assert.equal((await api.post('/api/salary').set(as('hr')).send({ userId: tok.empId, basic: 500000, effectiveFrom })).status, 201);
+  const currentSalary = await api.get('/api/salary').set(as('hr'));
+  assert.equal(currentSalary.body.items.find((row) => row.user._id === tok.empId).salary.basic, 500000);
+  const employeeSalary = await api.get('/api/salary/my').set(as('emp'));
+  assert.equal(employeeSalary.body.salary.basic, 500000);
   const run = await api.post('/api/payroll/run').set(as('hr')).send({ month });
   assert.equal(run.status, 200); assert.equal(run.body.created, 1);
+  const payroll = await api.get(`/api/payroll?month=${month}`).set(as('hr'));
+  assert.equal(payroll.body.items[0].basic, 500000);
   assert.equal((await api.post('/api/payroll/run').set(as('hr')).send({ month })).body.created, 0);
-  const list = await api.get(`/api/payroll?month=${month}`).set(as('hr'));
-  const id = list.body.items[0]._id;
-  assert.ok(list.body.items[0].netPay > 0);
+  const id = payroll.body.items[0]._id;
+  assert.ok(payroll.body.items[0].netPay > 0);
   assert.equal((await api.get(`/api/payroll/${id}/payslip`).set(as('emp'))).status, 403);   // not paid yet
   assert.equal((await api.post('/api/payroll/mark-paid').set(as('hr')).send({ month })).status, 200);
   const pdf = await api.get(`/api/payroll/${id}/payslip`).set(as('emp'));
