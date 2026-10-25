@@ -59,27 +59,41 @@ export async function refreshGeneratedPayroll(userId, effectiveFrom) {
   let updated = 0;
 
   for (const payroll of payrolls) {
-    const { last } = monthRange(payroll.month);
-    const salary = await Salary.findOne({ user: userId, effectiveFrom: { $lte: last } })
-      .sort({ effectiveFrom: -1, createdAt: -1, _id: -1 });
-    if (!salary) continue;
-
-    const gross = salary.basic + sum(salary.allowances);
-    const attendanceDeduction = payroll.workingDays
-      ? round((gross / payroll.workingDays) * payroll.unpaidDays)
-      : 0;
-    const totalDeductions = sum(salary.deductions) + attendanceDeduction;
-
-    payroll.basic = salary.basic;
-    payroll.allowances = salary.allowances;
-    payroll.deductions = salary.deductions;
-    payroll.gross = gross;
-    payroll.attendanceDeduction = attendanceDeduction;
-    payroll.totalDeductions = totalDeductions;
-    payroll.netPay = Math.max(0, round(gross - totalDeductions));
-    await payroll.save();
-    updated++;
+    if (await refreshPayrollSalary(payroll)) updated++;
   }
 
   return updated;
+}
+
+async function refreshPayrollSalary(payroll) {
+  const { last } = monthRange(payroll.month);
+  const salary = await Salary.findOne({ user: payroll.user, effectiveFrom: { $lte: last } })
+    .sort({ effectiveFrom: -1, createdAt: -1, _id: -1 });
+  if (!salary) return false;
+
+  const gross = salary.basic + sum(salary.allowances);
+  const attendanceDeduction = payroll.workingDays
+    ? round((gross / payroll.workingDays) * payroll.unpaidDays)
+    : 0;
+  const totalDeductions = sum(salary.deductions) + attendanceDeduction;
+
+  payroll.basic = salary.basic;
+  payroll.allowances = salary.allowances;
+  payroll.deductions = salary.deductions;
+  payroll.gross = gross;
+  payroll.attendanceDeduction = attendanceDeduction;
+  payroll.totalDeductions = totalDeductions;
+  payroll.netPay = Math.max(0, round(gross - totalDeductions));
+  await payroll.save();
+  return true;
+}
+
+export async function refreshGeneratedPayrollMonth(month) {
+  const payrolls = await Payroll.find({ month, status: 'generated' });
+  for (const payroll of payrolls) await refreshPayrollSalary(payroll);
+}
+
+export async function refreshGeneratedPayrollRecord(id) {
+  const payroll = await Payroll.findOne({ _id: id, status: 'generated' });
+  if (payroll) await refreshPayrollSalary(payroll);
 }

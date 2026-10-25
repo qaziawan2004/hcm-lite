@@ -5,7 +5,7 @@ import Company from '../models/Company.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 import { isValidMonth, currentMonth } from '../utils/dates.js';
-import { runPayroll } from '../services/payroll.js';
+import { runPayroll, refreshGeneratedPayrollMonth, refreshGeneratedPayrollRecord } from '../services/payroll.js';
 import { audit, notify } from '../services/log.js';
 
 const r = Router();
@@ -22,6 +22,7 @@ r.post('/run', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
 
 r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   const month = isValidMonth(req.query.month) ? req.query.month : currentMonth();
+  await refreshGeneratedPayrollMonth(month);
   const items = await Payroll.find({ month }).populate('user', 'name employeeId department').sort({ createdAt: 1 });
   const totals = items.reduce((t, p) => ({ gross: t.gross + p.gross, deductions: t.deductions + p.totalDeductions, net: t.net + p.netPay }), { gross: 0, deductions: 0, net: 0 });
   res.json({ items, month, totals });
@@ -50,6 +51,7 @@ r.delete('/:id', authorize('admin'), asyncHandler(async (req, res) => {
 }));
 
 r.get('/:id/payslip', asyncHandler(async (req, res) => {
+  await refreshGeneratedPayrollRecord(req.params.id);
   const p = await Payroll.findById(req.params.id).populate('user');
   if (!p) throw new HttpError(404, 'Payslip not found.');
   const own = String(p.user._id) === String(req.user._id);

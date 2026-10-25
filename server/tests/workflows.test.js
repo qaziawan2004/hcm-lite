@@ -210,6 +210,10 @@ test('salary → payroll → payslip PDF, employee sees only own and only once p
   assert.equal(refreshedPayroll.body.items[0].allowances[0].amount, 25000);
   assert.equal(refreshedPayroll.body.items[0].gross, 625000);
   assert.ok(refreshedPayroll.body.items[0].netPay > payroll.body.items[0].netPay);
+  const Payroll = (await import('../src/models/Payroll.js')).default;
+  await Payroll.updateOne({ _id: id }, { basic: 50000, gross: 50000, netPay: 50000 });
+  const reconciledPayroll = await api.get(`/api/payroll?month=${month}`).set(as('hr'));
+  assert.equal(reconciledPayroll.body.items[0].basic, 600000);
   assert.equal((await api.get(`/api/payroll/${id}/payslip`).set(as('emp'))).status, 403);   // not paid yet
   assert.equal((await api.post('/api/payroll/mark-paid').set(as('hr')).send({ month })).status, 200);
   const pdf = await api.get(`/api/payroll/${id}/payslip`).set(as('emp'));
