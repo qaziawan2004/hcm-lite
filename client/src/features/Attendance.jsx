@@ -13,6 +13,7 @@ export default function Attendance() {
   const [date, setDate] = useState('');
   const mine = useApi('/attendance/my', { month }, tab === 'mine');
   const all = useApi('/attendance', { month, page, date: date || undefined }, tab === 'all');
+  const current = tab === 'mine' ? mine : all;
 
   return (
     <>
@@ -24,10 +25,13 @@ export default function Attendance() {
         <input type="month" value={month} onChange={(e) => { setMonth(e.target.value || thisMonth()); setPage(1); }} aria-label="Month" />
         {tab === 'all' && <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(1); }} aria-label="Specific date" />}
       </div>
-      {tab === 'mine' ? (mine.loading ? <Loader /> : <>
+      {!current.data && current.error ? <div className="error" role="alert">{current.error}</div> : current.loading || !current.data ? <Loader /> : <>
+      {current.error && <div className="error" role="alert">{current.error}</div>}
+      {tab === 'mine' ? <>
         <div className="grid g4" style={{ marginBottom: '1rem' }}><Stat label="Present" value={mine.data.summary.present} tone="good" /><Stat label="Late" value={mine.data.summary.late} tone="warn" /><Stat label="Hours worked" value={mine.data.summary.hours} /></div>
         <Table rows={mine.data.items} />
-      </>) : (all.loading ? <Loader /> : <><Table rows={all.data.items} showUser /><Pager page={all.data.page} pages={all.data.pages} onChange={setPage} /></>)}
+      </> : <><Table rows={all.data.items} showUser /><Pager page={all.data.page} pages={all.data.pages} onChange={setPage} /></>}
+      </>}
     </>
   );
 }
