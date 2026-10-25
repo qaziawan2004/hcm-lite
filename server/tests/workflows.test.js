@@ -59,6 +59,10 @@ test('login requires OTP; wrong codes trigger a replacement and codes cannot be 
   const start = await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' });
   assert.equal(start.status, 200);
   assert.equal(typeof start.body.token, 'undefined');
+  const challengeHash = crypto.createHash('sha256').update(start.body.challengeId).digest('hex');
+  const storedChallenge = await LoginChallenge.findOne({ challengeHash }).select('+codeHash');
+  assert.equal(storedChallenge.codeHash.length, 64);
+  assert.notEqual(storedChallenge.codeHash, latestOtp('a@t.com'));
   const wrongCode = latestOtp('a@t.com') === '000000' ? '000001' : '000000';
   const wrong = await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: wrongCode });
   assert.equal(wrong.status, 401);
@@ -67,6 +71,17 @@ test('login requires OTP; wrong codes trigger a replacement and codes cannot be 
   assert.equal(verified.status, 200);
   assert.equal(verified.body.user.role, 'admin');
   assert.equal((await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') })).status, 410);
+});
+
+test('OTP attempts are capped and invalidate the challenge', async () => {
+  const start = await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' });
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const actualCode = latestOtp('a@t.com');
+    const wrongCode = String((Number(actualCode) + 1) % 1_000_000).padStart(6, '0');
+    const response = await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: wrongCode });
+    assert.equal(response.status, attempt === 5 ? 429 : 401);
+  }
+  assert.equal((await api.post('/api/auth/otp/resend').send({ challengeId: start.body.challengeId })).status, 410);
 });
 
 test('OTP expiry and resend issue a fresh code', async () => {

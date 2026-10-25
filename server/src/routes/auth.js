@@ -96,7 +96,7 @@ r.post('/login', loginLimiter, asyncHandler(async (req, res) => {
 
 r.post('/otp/verify', otpLimiter, asyncHandler(async (req, res) => {
   const { challengeId, code } = req.body;
-  if (typeof challengeId !== 'string' || typeof code !== 'string' || !/^\d{6}$/.test(code)) {
+  if (typeof challengeId !== 'string' || challengeId.length > 100 || typeof code !== 'string' || !/^\d{6}$/.test(code)) {
     throw new HttpError(400, 'Enter the six-digit code from your email.');
   }
   const challenge = await LoginChallenge.findOne({

@@ -29,6 +29,7 @@ export default function OtpVerify() {
       nav('/', { replace: true });
     } catch (err) {
       setError(errMsg(err));
+      if (err.response?.status === 401) setCode('');
       if (err.response?.status === 410 || err.response?.status === 429) {
         sessionStorage.removeItem('hcm_otp_challenge');
         sessionStorage.removeItem('hcm_otp_email');
@@ -44,6 +45,7 @@ export default function OtpVerify() {
     setBusy(true);
     try {
       const { data } = await api.post('/auth/otp/resend', { challengeId });
+      setCode('');
       setNotice(data.message);
     } catch (err) {
       setError(errMsg(err));
