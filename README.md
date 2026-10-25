@@ -74,40 +74,32 @@ Nobody can approve their own leave. HR and admin leave requests are approved by 
 
 ## Deploy on Vercel
 
-Deploy the frontend and API as **two separate Vercel projects** from this repository.
+Deploy the frontend and API together as **one Vercel project** so the app and `/api` use the same live origin. The repository-root `vercel.json` builds the Vite client and routes API requests to the Express serverless function.
 
-**Database:** Use MongoDB Atlas or another hosted MongoDB service. Add the Vercel deployment's outbound IP access as required by your database provider; if using Atlas without a fixed egress IP, configure its network access to allow Vercel connections.
+**Database:** Use MongoDB Atlas or another hosted MongoDB service. Configure its network access to allow connections from Vercel.
 
-### API project
-
-1. Import the repository as a Vercel project and set **Root Directory** to `server`.
-2. Use the Node.js runtime (Framework Preset: **Other**). No build command or start command is needed; Vercel deploys `api/[...path].js` as a catch-all serverless function.
-3. Set these **Project Environment Variables** for Production (and Preview if needed):
+1. In Vercel, import this repository. For the existing frontend project, change **Root Directory** from `client` to the repository root (`.`). Do not deploy this setup with `client` as the root directory.
+2. Use the Node.js runtime. The root `package.json` manages both workspaces; Vercel uses `npm run build` and `client/dist` as the output directory from `vercel.json`.
+3. Add these **Project Environment Variables** for Production (and Preview if needed):
    - `MONGODB_URI` — hosted MongoDB connection string
    - `JWT_SECRET` — long, random secret; keep it private
-   - `CORS_ORIGIN` — exact frontend origin, such as `https://hcm-lite.vercel.app` (no trailing slash). Use comma-separated origins if you have more than one.
    - `APP_TZ` — e.g. `Asia/Karachi`
    - `ANTHROPIC_API_KEY` — optional; enables AI chat and dashboard summaries
    - `AI_MODEL` — optional; defaults to `claude-sonnet-5-5`
    - `JWT_EXPIRES_IN` — optional; defaults to the application default
-4. Deploy, then verify `https://<your-api-domain>/api/health` returns `{"ok":true}`.
+   - `VITE_SHOW_DEMO` — optional; set to `true` only if demo-login buttons are desired
+4. Leave `VITE_API_URL` unset or empty. The frontend uses `/api` on its own domain. `CORS_ORIGIN` is optional for this single-domain setup; Vercel deployment and production domains are allowed automatically. If you add another frontend origin, list it in `CORS_ORIGIN`.
+5. Redeploy, then verify `https://<your-live-domain>/api/health` returns `{"ok":true}` and `/api/auth/setup-status` returns JSON containing `needsSetup`.
 
 The API uses a Vercel serverless function and reuses the MongoDB connection while the function instance is warm. Vercel may scale functions down between requests, so the first request after idle can take longer.
 
-### Frontend project
+On an empty database, the sign-in page becomes **Set up your company** and creates the first admin. To preload demo data, run `npm run seed --workspace hcm-lite-server` with the production `MONGODB_URI` set in your environment; this wipes the database first.
 
-1. Import the same repository as another Vercel project and set **Root Directory** to `client`.
-2. Use the Vite build (`npm run build`) and output directory `dist`.
-3. Set `VITE_API_URL` to the API origin, e.g. `https://<your-api-domain>` (**no** trailing slash and **no** `/api` suffix). Set `VITE_SHOW_DEMO=true` only if demo-login buttons are desired.
-4. Deploy or redeploy after setting environment variables; Vite embeds `VITE_API_URL` at build time.
-
-The frontend's `vercel.json` includes SPA rewrites so direct navigation to app routes works. Set the API project's `CORS_ORIGIN` to the exact deployed frontend domain. If using Vercel Preview URLs, add each preview origin to `CORS_ORIGIN` and redeploy the API, or test against a stable custom frontend domain.
-
-**For judges:** open the deployed frontend. On an empty database, the company setup screen creates the first admin. To preload demo data, run `npm run seed` from `server/` with the production `MONGODB_URI` set in your environment; this wipes the database first.
+The `client/vercel.json` remains for frontend-only deployments. If keeping separate frontend and API Vercel projects, configure `VITE_API_URL` on the frontend to the API origin (without `/api`) and configure `CORS_ORIGIN` on the API with the frontend's exact origin. The root-project setup above is recommended to avoid cross-project URL and CORS mistakes.
 
 ### Alternative: Render API
 
-The root `render.yaml` remains available if you prefer a long-running API on Render. Deploy the frontend as above and set the Render API's `CORS_ORIGIN` to the frontend origin.
+The root `render.yaml` remains available if you prefer a long-running API on Render. Deploy the frontend separately and set the Render API's `CORS_ORIGIN` to the frontend origin.
 
 ## Tests
 

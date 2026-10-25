@@ -1,0 +1,15 @@
+{
+  "name": "hcm-lite",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace hcm-lite-client",
+    "test": "npm test --workspace hcm-lite-server"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

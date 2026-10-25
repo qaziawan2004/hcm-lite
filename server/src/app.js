@@ -25,12 +25,17 @@ export default function createApp() {
   app.set('trust proxy', 1);
   app.use(helmet());
 
-  const origins = (
-    process.env.CORS_ORIGIN || 'http://localhost:5173'
-  )
+  const configuredOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  const vercelOrigins = [
+    process.env.VERCEL_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  ]
+    .filter(Boolean)
+    .map((url) => (url.startsWith('http') ? url : `https://${url}`));
+  const origins = [...configuredOrigins, ...vercelOrigins];
 
   app.use(
     cors({

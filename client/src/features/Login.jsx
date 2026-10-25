@@ -17,12 +17,24 @@ export default function Login() {
   const [state, setState] = useState('checking'); // checking | down | setup | login
   const [f, setF] = useState({ companyName: '', name: '', email: '', password: '' });
   const [err, setErr] = useState('');
+  const [connectionError, setConnectionError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   const check = () => {
     setState('checking');
-    api.get('/auth/setup-status').then((r) => setState(r.data.needsSetup ? 'setup' : 'login')).catch(() => setState('down'));
+    setConnectionError('');
+    api.get('/auth/setup-status').then(({ data }) => {
+      if (typeof data?.needsSetup !== 'boolean') {
+        setConnectionError('The API URL is pointing to the frontend instead of the API. Set VITE_API_URL to your deployed API origin in Vercel, then redeploy the frontend.');
+        setState('down');
+        return;
+      }
+      setState(data.needsSetup ? 'setup' : 'login');
+    }).catch(() => {
+      setConnectionError('The API is not responding. Verify the API deployment and set VITE_API_URL to its origin in Vercel, then redeploy the frontend.');
+      setState('down');
+    });
   };
   useEffect(check, []);
 
@@ -45,8 +57,8 @@ export default function Login() {
         {state === 'checking' && <p className="muted">Connecting…</p>}
         {state === 'down' && (
           <div className="auth-card">
-            <h2>Can't reach the server</h2>
-            <div className="error">The API is not responding. Start it with <code>npm run dev</code> inside the <code>server</code> folder (and make sure MongoDB is running), then try again.</div>
+            <h2>Can't connect to the API</h2>
+            <div className="error" role="alert">{connectionError}</div>
             <button className="btn" style={{ width: '100%' }} onClick={check}>Try again</button>
           </div>
         )}
