@@ -33,8 +33,9 @@ export default function Login() {
       setState(data.needsSetup ? 'setup' : 'login');
     }).catch((error) => {
       const status = error.response?.status;
+      const apiMessage = error.response?.data?.message;
       setConnectionError(status
-        ? `The API returned an error (${status}). Check the API server configuration and logs, then try again.`
+        ? `The API returned an error (${status})${apiMessage ? `: ${apiMessage}` : ''} Check the API server configuration and logs, then try again.`
         : 'The API is not responding. Verify the API deployment and set VITE_API_URL to its origin in Vercel, then redeploy the frontend.');
       setState('down');
     });

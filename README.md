@@ -106,7 +106,7 @@ On an empty database, the sign-in page becomes **Set up your company** and creat
 
 For separate frontend and API Vercel projects:
 
-1. Deploy the frontend with **Root Directory** `client`, build command `npm run build`, and output directory `dist`. Set `VITE_API_URL` to the API deployment origin without a trailing slash or `/api`, then redeploy the frontend.
+1. Deploy the frontend with **Root Directory** `client`, build command `npm run build`, and output directory `dist`. Set `VITE_API_URL` to the API deployment origin without a trailing slash or `/api`, then redeploy the frontend. The frontend does not proxy API requests to a fixed deployment; `VITE_API_URL` must point to your API project.
 2. Deploy the API with **Root Directory** `server` and Node.js 20 or newer. Configure `MONGODB_URI`, `JWT_SECRET`, and `CORS_ORIGIN` (the exact frontend origin, including `https://`; comma-separate origins if needed).
 3. Add `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and optionally `EMAIL_FROM` to the API project's environment variables. Configure the values for Production and Preview as needed, then redeploy both projects.
 
