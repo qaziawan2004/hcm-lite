@@ -8,7 +8,13 @@ const r = Router();
 r.use(protect);
 const clean = (a) => [...new Set((a || []).map((s) => String(s).trim()).filter(Boolean))];
 
-r.get('/', asyncHandler(async (_req, res) => res.json({ company: await Company.findOne() })));
+r.get('/', asyncHandler(async (req, res) => {
+  let company = await Company.findOne();
+  if (!company && req.user.role === 'admin') {
+    company = await Company.create({ name: 'HCM Lite' });
+  }
+  res.json({ company });
+}));
 
 r.put('/', authorize('admin'), asyncHandler(async (req, res) => {
   const c = await Company.findOne();

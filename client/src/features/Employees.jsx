@@ -5,10 +5,15 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Badge, Confirm, Empty, Field, Loader, Modal, PageHeader, Pager, useToast } from '../components/ui.jsx';
 import { fmtDate, canManage } from '../utils/format.js';
 
+const DEFAULT_DEPARTMENTS = ['Engineering', 'Human Resources', 'Finance', 'Sales', 'Operations'];
+const DEFAULT_DESIGNATIONS = ['Manager', 'Senior Associate', 'Associate', 'Intern'];
+
 function EmployeeForm({ initial, onClose, onSaved }) {
   const { user: me, company } = useAuth();
   const toast = useToast();
   const edit = !!initial;
+  const departments = company?.departments?.length ? company.departments : DEFAULT_DEPARTMENTS;
+  const designations = company?.designations?.length ? company.designations : DEFAULT_DESIGNATIONS;
   const [f, setF] = useState(initial ? { ...initial } : { name: '', email: '', role: 'employee', department: '', designation: '', phone: '', joinDate: new Date().toLocaleDateString('en-CA') });
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -26,8 +31,8 @@ function EmployeeForm({ initial, onClose, onSaved }) {
         <div className="form-grid">
           <Field label="Full name"><input value={f.name} onChange={set('name')} required /></Field>
           <Field label="Work email"><input type="email" value={f.email} onChange={set('email')} required /></Field>
-          <Field label="Department"><select value={f.department} onChange={set('department')}><option value="">Select…</option>{company?.departments.map((d) => <option key={d}>{d}</option>)}</select></Field>
-          <Field label="Designation"><select value={f.designation} onChange={set('designation')}><option value="">Select…</option>{company?.designations.map((d) => <option key={d}>{d}</option>)}</select></Field>
+          <Field label="Department"><select value={f.department} onChange={set('department')}><option value="">Select…</option>{departments.map((d) => <option key={d}>{d}</option>)}</select></Field>
+          <Field label="Designation"><select value={f.designation} onChange={set('designation')}><option value="">Select…</option>{designations.map((d) => <option key={d}>{d}</option>)}</select></Field>
           <Field label="Phone"><input value={f.phone} onChange={set('phone')} /></Field>
           <Field label="Join date"><input type="date" value={f.joinDate} onChange={set('joinDate')} /></Field>
           <Field label="Role" hint={me.role !== 'admin' ? 'Only an admin can assign HR or admin roles.' : undefined}>
@@ -55,7 +60,7 @@ export default function Employees() {
       <PageHeader title="Employees" sub="Register people, update their details and manage access."><button className="btn accent" onClick={() => setForm({})}>Register employee</button></PageHeader>
       <div className="filters">
         <input placeholder="Search name, email or ID" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label="Search" />
-        <select value={department} onChange={(e) => { setDept(e.target.value); setPage(1); }} aria-label="Department"><option value="">All departments</option>{company?.departments.map((d) => <option key={d}>{d}</option>)}</select>
+        <select value={department} onChange={(e) => { setDept(e.target.value); setPage(1); }} aria-label="Department"><option value="">All departments</option>{(company?.departments?.length ? company.departments : DEFAULT_DEPARTMENTS).map((d) => <option key={d}>{d}</option>)}</select>
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status"><option value="">Any status</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
       </div>
       {error && <div className="error">{error}</div>}

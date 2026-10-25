@@ -73,6 +73,16 @@ test('login requires OTP; wrong codes trigger a replacement and codes cannot be 
   assert.equal((await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') })).status, 410);
 });
 
+test('admin company lookup restores default department and designation options when company settings are missing', async () => {
+  const Company = (await import('../src/models/Company.js')).default;
+  await Company.deleteMany({});
+  const response = await api.get('/api/company').set(as('admin'));
+  assert.equal(response.status, 200);
+  assert.equal(response.body.company.name, 'HCM Lite');
+  assert.ok(response.body.company.departments.includes('Engineering'));
+  assert.ok(response.body.company.designations.includes('Manager'));
+});
+
 test('OTP attempts are capped and invalidate the challenge', async () => {
   const start = await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' });
   for (let attempt = 1; attempt <= 5; attempt += 1) {
