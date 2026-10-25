@@ -40,7 +40,12 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true);
-    try { state === 'setup' ? await setup(f) : await login(f.email, f.password); nav('/'); }
+    try {
+      const result = state === 'setup' ? await setup(f) : await login(f.email, f.password);
+      sessionStorage.setItem('hcm_otp_challenge', result.challengeId);
+      sessionStorage.setItem('hcm_otp_email', result.email);
+      nav('/otp-verify', { state: { challengeId: result.challengeId, email: result.email } });
+    }
     catch (x) { setErr(errMsg(x)); } finally { setBusy(false); }
   };
 

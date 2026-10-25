@@ -9,7 +9,7 @@ api.interceptors.request.use((c) => {
 });
 api.interceptors.response.use((r) => r, (e) => {
   const url = e.config?.url || '';
-  if (e.response?.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/setup')) {
+  if (e.response?.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/setup') && !url.includes('/auth/otp/')) {
     localStorage.removeItem('hcm_token');
     if (!location.pathname.startsWith('/login')) location.href = '/login';
   }

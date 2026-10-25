@@ -5,6 +5,7 @@ import DashboardLayout from './layouts/DashboardLayout.jsx';
 import { Loader } from './components/ui.jsx';
 
 const Login = lazy(() => import('./features/Login.jsx'));
+const OtpVerify = lazy(() => import('./features/OtpVerify.jsx'));
 const Dashboard = lazy(() => import('./features/Dashboard.jsx'));
 const Company = lazy(() => import('./features/Company.jsx'));
 const Employees = lazy(() => import('./features/Employees.jsx'));
@@ -34,6 +35,7 @@ export default function App() {
     <Suspense fallback={<Loader />}>
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/otp-verify" element={user ? <Navigate to="/" replace /> : <OtpVerify />} />
         <Route element={<Protected><DashboardLayout /></Protected>}>
           <Route index element={<Dashboard />} />
           <Route path="attendance" element={<Attendance />} />

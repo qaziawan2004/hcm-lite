@@ -5,6 +5,7 @@ import Company from '../models/Company.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { HttpError, asyncHandler, paginate } from '../utils/http.js';
 import { audit, notify } from '../services/log.js';
+import { ensureEmailConfigured, sendWelcomeEmail } from '../services/email.js';
 
 const r = Router();
 r.use(protect);
@@ -39,12 +40,14 @@ r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   if (!name || !email) throw new HttpError(400, 'Name and email are required.');
   if (!['admin', 'hr', 'employee'].includes(role)) throw new HttpError(400, 'Invalid role.');
   if (role !== 'employee' && req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can create HR or admin accounts.');
+  ensureEmailConfigured();
   const company = await Company.findOne();
   const temp = password || tempPassword();
   const user = await User.create({
     name, email, role, department, designation, phone, joinDate: joinDate || undefined, password: temp,
     employeeId: await nextEmployeeId(), mustChangePassword: true, leaveBalance: company ? { annual: company.leaveQuota.annual, sick: company.leaveQuota.sick, casual: company.leaveQuota.casual } : undefined,
   });
+  await sendWelcomeEmail(user);
   await audit(req, 'EMPLOYEE_CREATED', 'User', user._id, `${user.name} (${user.role})`);
   await notify(user._id, 'Welcome to HCM Lite', 'Your account is ready. Please change your password.', '/profile');
   res.status(201).json({ user, temporaryPassword: temp });

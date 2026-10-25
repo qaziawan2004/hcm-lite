@@ -10,12 +10,12 @@ hcm-lite/
 
 ## Run locally
 
-Requirements: Node 18+ and MongoDB (local, or a free MongoDB Atlas cluster).
+Requirements: Node 20+ and MongoDB (local, or a free MongoDB Atlas cluster).
 
 ```bash
 # 1. API
 cd server
-cp .env.example .env        # set MONGODB_URI and JWT_SECRET (and ANTHROPIC_API_KEY for the AI chat)
+cp .env.example .env        # set MONGODB_URI, JWT_SECRET, and SMTP settings (ANTHROPIC_API_KEY is optional)
 npm install
 npm run seed                # optional demo data (wipes the DB!)
 npm run dev                 # http://localhost:5000
@@ -28,6 +28,12 @@ npm run dev                 # http://localhost:5173
 ```
 
 **Fresh setup (no seed):** open the app on an empty database. The sign-in page turns into "Set up your company" and creates the company plus the first admin. After that, the admin registers HR and employees.
+
+### Email verification and two-step sign-in
+
+New company admins and employee accounts receive a welcome email. Every password sign-in (including the initial company setup) sends a six-digit code to the account email; the user must enter it on the verification page before a JWT session is created. Codes expire after one minute, are stored as keyed hashes, and are limited to five attempts. An incorrect code triggers a replacement email; the verification page also supports requesting a new code.
+
+Configure SMTP on the **server** deployment using `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM` (optional; defaults to `SMTP_USER`). Use an app password where required by the email provider. `SMTP_SECURE` is normally `true` for port 465 and `false` for port 587. Account creation and sign-in verification require working SMTP configuration.
 
 **Demo accounts (after `npm run seed`):**
 
@@ -78,9 +84,10 @@ Deploy the frontend and API together as **one Vercel project** so the app and `/
 
 **Database:** Use MongoDB Atlas or another hosted MongoDB service. Configure its network access to allow connections from Vercel.
 
-1. In Vercel, import this repository. For the existing frontend project, change **Root Directory** from `client` to the repository root (`.`). Do not deploy this setup with `client` as the root directory.
-2. Use the Node.js runtime. The root `package.json` manages both workspaces; Vercel uses `npm run build` and `client/dist` as the output directory from `vercel.json`.
-3. Add these **Project Environment Variables** for Production (and Preview if needed):
+1. Use Node.js 20 or newer for the server runtime. Vercel can configure the runtime under Project Settings.
+2. In Vercel, import this repository. For the existing frontend project, change **Root Directory** from `client` to the repository root (`.`). Do not deploy this setup with `client` as the root directory.
+3. Use the Node.js runtime. The root `package.json` manages both workspaces; Vercel uses `npm run build` and `client/dist` as the output directory from `vercel.json`.
+4. Add these **Project Environment Variables** for Production (and Preview if needed):
    - `MONGODB_URI` — hosted MongoDB connection string
    - `JWT_SECRET` — long, random secret; keep it private
    - `APP_TZ` — e.g. `Asia/Karachi`
@@ -88,14 +95,18 @@ Deploy the frontend and API together as **one Vercel project** so the app and `/
    - `AI_MODEL` — optional; defaults to `claude-sonnet-5-5`
    - `JWT_EXPIRES_IN` — optional; defaults to the application default
    - `VITE_SHOW_DEMO` — optional; set to `true` only if demo-login buttons are desired
-4. Leave `VITE_API_URL` unset or empty. The frontend uses `/api` on its own domain. `CORS_ORIGIN` is optional for this single-domain setup; Vercel deployment and production domains are allowed automatically. If you add another frontend origin, list it in `CORS_ORIGIN`.
-5. Redeploy, then verify `https://<your-live-domain>/api/health` returns `{"ok":true}` and `/api/auth/setup-status` returns JSON containing `needsSetup`.
+5. Leave `VITE_API_URL` unset or empty. The frontend uses `/api` on its own domain. `CORS_ORIGIN` is optional for this single-domain setup; Vercel deployment and production domains are allowed automatically. If you add another frontend origin, list it in `CORS_ORIGIN`.
+6. Add the SMTP settings below for welcome messages and sign-in verification, then redeploy. Verify `https://<your-live-domain>/api/health` returns `{"ok":true}` and `/api/auth/setup-status` returns JSON containing `needsSetup`.
 
 The API uses a Vercel serverless function and reuses the MongoDB connection while the function instance is warm. Vercel may scale functions down between requests, so the first request after idle can take longer.
 
 On an empty database, the sign-in page becomes **Set up your company** and creates the first admin. To preload demo data, run `npm run seed --workspace hcm-lite-server` with the production `MONGODB_URI` set in your environment; this wipes the database first.
 
-The `client/vercel.json` remains for frontend-only deployments. If keeping separate frontend and API Vercel projects, configure `VITE_API_URL` on the frontend to the API origin (without `/api`) and configure `CORS_ORIGIN` on the API with the frontend's exact origin. The root-project setup above is recommended to avoid cross-project URL and CORS mistakes.
+For separate frontend and API Vercel projects:
+
+1. Deploy the frontend with **Root Directory** `client`, build command `npm run build`, and output directory `dist`. Set `VITE_API_URL` to the API deployment origin without a trailing slash or `/api`, then redeploy the frontend.
+2. Deploy the API with **Root Directory** `server` and Node.js 20 or newer. Configure `MONGODB_URI`, `JWT_SECRET`, and `CORS_ORIGIN` (the exact frontend origin, including `https://`; comma-separate origins if needed).
+3. Add `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and optionally `EMAIL_FROM` to the API project's environment variables. Configure the values for Production and Preview as needed, then redeploy both projects.
 
 ### Alternative: Render API
 

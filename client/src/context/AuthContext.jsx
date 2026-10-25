@@ -19,15 +19,21 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { if (localStorage.getItem('hcm_token')) loadSession(); }, [loadSession]);
 
-  const start = async (path, body) => {
-    const { data } = await api.post(path, body);
+  const login = async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password });
+    return data;
+  };
+  const setup = async (body) => {
+    const { data } = await api.post('/auth/setup', body);
+    return data;
+  };
+  const completeLogin = async (challengeId, code) => {
+    const { data } = await api.post('/auth/otp/verify', { challengeId, code });
     localStorage.setItem('hcm_token', data.token);
     await loadSession();
     return data.user;
   };
-  const login = (email, password) => start('/auth/login', { email, password });
-  const setup = (body) => start('/auth/setup', body);
   const logout = () => { localStorage.removeItem('hcm_token'); setUser(null); setCompany(null); };
 
-  return <Ctx.Provider value={{ user, setUser, company, setCompany, loading, login, setup, logout, refresh: loadSession }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, setUser, company, setCompany, loading, login, setup, completeLogin, logout, refresh: loadSession }}>{children}</Ctx.Provider>;
 }

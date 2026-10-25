@@ -3,17 +3,36 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { setEmailSenderForTests } from '../src/services/email.js';
+import LoginChallenge from '../src/models/LoginChallenge.js';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
 let mongod, api;
 const tok = {};
+const sentEmails = [];
 const addDaysISO = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const nextWeekday = (n) => { let d = addDaysISO(n); while ([0, 6].includes(new Date(d + 'T00:00:00Z').getUTCDay())) d = addDaysISO(++n); return d; };
+const latestOtp = (email) => {
+  const mail = [...sentEmails].reverse().find((message) => message.to === email && message.subject.includes('sign-in code'));
+  assert.ok(mail, `no sign-in code email sent to ${email}`);
+  return mail.text.match(/code is (\d{6})/)?.[1];
+};
+const signIn = async (email, password) => {
+  const start = await api.post('/api/auth/login').send({ email, password });
+  assert.equal(start.status, 200);
+  assert.equal(typeof start.body.token, 'undefined');
+  return api.post('/api/auth/otp/verify').send({
+    challengeId: start.body.challengeId,
+    code: latestOtp(email),
+  });
+};
 const as = (role) => ({ Authorization: `Bearer ${tok[role]}` });
 
 before(async () => {
+  setEmailSenderForTests(async (message) => { sentEmails.push(message); });
   mongod = await MongoMemoryServer.create();
   await mongoose.connect(mongod.getUri());
   const { default: createApp } = await import('../src/app.js');
@@ -24,26 +43,55 @@ after(async () => { await mongoose.disconnect(); await mongod.stop(); });
 test('first-run setup creates admin, then locks', async () => {
   assert.equal((await api.get('/api/auth/setup-status')).body.needsSetup, true);
   const r = await api.post('/api/auth/setup').send({ companyName: 'T', name: 'Admin', email: 'a@t.com', password: 'Password1' });
-  assert.equal(r.status, 201); tok.admin = r.body.token;
+  assert.equal(r.status, 201);
+  assert.equal(typeof r.body.token, 'undefined');
+  assert.ok(sentEmails.some((message) => message.to === 'a@t.com' && message.subject === 'Welcome to HCM Lite'));
+  const verified = await api.post('/api/auth/otp/verify').send({ challengeId: r.body.challengeId, code: latestOtp('a@t.com') });
+  assert.equal(verified.status, 200);
+  tok.admin = verified.body.token;
   assert.equal((await api.post('/api/auth/setup').send({ companyName: 'T', name: 'X', email: 'x@t.com', password: 'Password1' })).status, 403);
 });
 
-test('login rejects bad password; passwords are hashed', async () => {
+test('login requires OTP; wrong codes trigger a replacement and codes cannot be replayed', async () => {
   assert.equal((await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'wrong' })).status, 401);
   const u = await mongoose.connection.db.collection('users').findOne({ email: 'a@t.com' });
   assert.notEqual(u.password, 'Password1'); assert.match(u.password, /^\$2[aby]\$/);
-  assert.equal((await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' })).body.user.role, 'admin');
+  const start = await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' });
+  assert.equal(start.status, 200);
+  assert.equal(typeof start.body.token, 'undefined');
+  const wrongCode = latestOtp('a@t.com') === '000000' ? '000001' : '000000';
+  const wrong = await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: wrongCode });
+  assert.equal(wrong.status, 401);
+  assert.match(wrong.body.message, /new verification code has been sent/i);
+  const verified = await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') });
+  assert.equal(verified.status, 200);
+  assert.equal(verified.body.user.role, 'admin');
+  assert.equal((await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') })).status, 410);
+});
+
+test('OTP expiry and resend issue a fresh code', async () => {
+  const start = await api.post('/api/auth/login').send({ email: 'a@t.com', password: 'Password1' });
+  const challengeHash = crypto.createHash('sha256').update(start.body.challengeId).digest('hex');
+  await LoginChallenge.updateOne({ challengeHash }, { codeExpiresAt: new Date(Date.now() - 1000), lastSentAt: new Date(Date.now() - 31000) });
+  const expired = await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') });
+  assert.equal(expired.status, 410);
+  assert.match(expired.body.message, /expired/i);
+  const resent = await api.post('/api/auth/otp/resend').send({ challengeId: start.body.challengeId });
+  assert.equal(resent.status, 200);
+  assert.equal((await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') })).status, 200);
 });
 
 test('admin creates HR and employee; HR cannot create admin/HR', async () => {
   const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1' });
   assert.equal(hr.status, 201);
-  const hrLogin = await api.post('/api/auth/login').send({ email: 'hr@t.com', password: 'Password1' });
+  assert.ok(sentEmails.some((message) => message.to === 'hr@t.com' && message.subject === 'Welcome to HCM Lite'));
+  const hrLogin = await signIn('hr@t.com', 'Password1');
   assert.equal(hrLogin.body.user.role, 'hr');
   tok.hr = hrLogin.body.token;
   const emp = await api.post('/api/employees').set(as('hr')).send({ name: 'Emp', email: 'e@t.com', password: 'Password1' });
   assert.equal(emp.status, 201);
-  const employeeLogin = await api.post('/api/auth/login').send({ email: 'e@t.com', password: 'Password1' });
+  assert.ok(sentEmails.some((message) => message.to === 'e@t.com' && message.subject === 'Welcome to HCM Lite'));
+  const employeeLogin = await signIn('e@t.com', 'Password1');
   assert.equal(employeeLogin.body.user.role, 'employee');
   tok.emp = employeeLogin.body.token;
   tok.empId = emp.body.user._id;
