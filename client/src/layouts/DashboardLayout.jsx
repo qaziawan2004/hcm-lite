@@ -37,7 +37,14 @@ export default function DashboardLayout() {
   useEffect(() => { setOpen(false); }, [loc.pathname]);
   useEffect(() => {
     let live = true;
-    const load = () => api.get('/notifications').then((r) => live && setUnread(r.data.unread)).catch(() => {});
+    const load = async () => {
+      try {
+        const { data } = await api.get('/notifications');
+        if (live) setUnread(data.unread);
+      } catch (error) {
+        console.error('Unable to refresh notifications.', error);
+      }
+    };
     load();
     const t = setInterval(load, 60000);
     window.addEventListener('notif-changed', load);

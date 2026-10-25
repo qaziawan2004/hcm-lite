@@ -21,26 +21,27 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
-  const check = () => {
+  const check = async () => {
     setState('checking');
     setConnectionError('');
-    api.get('/auth/setup-status').then(({ data }) => {
+    try {
+      const { data } = await api.get('/auth/setup-status');
       if (typeof data?.needsSetup !== 'boolean') {
         setConnectionError('The API URL is pointing to the frontend instead of the API. Set VITE_API_URL to your deployed API origin in Vercel, then redeploy the frontend.');
         setState('down');
         return;
       }
       setState(data.needsSetup ? 'setup' : 'login');
-    }).catch((error) => {
+    } catch (error) {
       const status = error.response?.status;
       const apiMessage = error.response?.data?.message;
       setConnectionError(status
         ? `The API returned an error (${status})${apiMessage ? `: ${apiMessage}` : ''} Check the API server configuration and logs, then try again.`
         : 'The API is not responding. Verify the API deployment and set VITE_API_URL to its origin in Vercel, then redeploy the frontend.');
       setState('down');
-    });
+    }
   };
-  useEffect(check, []);
+  useEffect(() => { check(); }, []);
 
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true);
