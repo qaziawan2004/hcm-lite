@@ -33,7 +33,7 @@ function SalaryForm({ row, onClose, onSaved }) {
     e.preventDefault(); setErr('');
     try {
       const { data } = await api.post('/salary', { userId: row.user._id, basic, allowances: allowances.filter((a) => a.name && a.amount !== ''), deductions: deductions.filter((a) => a.name && a.amount !== ''), effectiveFrom });
-      toast(`Salary saved.${data.refreshedPayroll ? ` Updated ${data.refreshedPayroll} unpaid payroll record(s).` : ''}`); onSaved();
+      toast(`Salary saved.${data.refreshedPayroll ? ` Updated ${data.refreshedPayroll} payroll record(s).` : ''}`); onSaved();
     } catch (x) { setErr(errMsg(x)); }
   };
   return (
@@ -41,7 +41,7 @@ function SalaryForm({ row, onClose, onSaved }) {
       <form onSubmit={submit}>
         {err && <div className="error" role="alert">{err}</div>}
         <div className="form-grid"><Field label="Basic salary (monthly)"><input type="number" min="0" value={basic} onChange={(e) => setBasic(e.target.value)} required /></Field>
-          <Field label="Effective from" hint="Updates unpaid payroll from this date. Paid payroll stays unchanged."><input type="date" value={effectiveFrom} onChange={(e) => setEff(e.target.value)} required /></Field></div>
+          <Field label="Effective from" hint="Recalculates payroll and payslips from this date, including paid records."><input type="date" value={effectiveFrom} onChange={(e) => setEff(e.target.value)} required /></Field></div>
         <Items label="Allowances" items={allowances} setItems={setA} />
         <Items label="Fixed deductions" items={deductions} setItems={setD} />
         <p><strong>Gross {money(gross)}</strong> · Fixed deductions {money(sum(deductions))} · Before unpaid-day deductions: <strong>{money(gross - sum(deductions))}</strong></p>

@@ -50,10 +50,9 @@ export async function runPayroll(month, actorId) {
   return out;
 }
 
-export async function refreshGeneratedPayroll(userId, effectiveFrom) {
+export async function refreshPayrollForSalaryChange(userId, effectiveFrom) {
   const payrolls = await Payroll.find({
     user: userId,
-    status: 'generated',
     month: { $gte: effectiveFrom.slice(0, 7) },
   });
   let updated = 0;
@@ -88,12 +87,12 @@ async function refreshPayrollSalary(payroll) {
   return true;
 }
 
-export async function refreshGeneratedPayrollMonth(month) {
-  const payrolls = await Payroll.find({ month, status: 'generated' });
+export async function refreshPayrollMonth(month) {
+  const payrolls = await Payroll.find({ month });
   for (const payroll of payrolls) await refreshPayrollSalary(payroll);
 }
 
-export async function refreshGeneratedPayrollRecord(id) {
-  const payroll = await Payroll.findOne({ _id: id, status: 'generated' });
+export async function refreshPayrollRecord(id) {
+  const payroll = await Payroll.findById(id);
   if (payroll) await refreshPayrollSalary(payroll);
 }

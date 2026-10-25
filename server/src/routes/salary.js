@@ -5,7 +5,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 import { isValidDate, today } from '../utils/dates.js';
 import { audit } from '../services/log.js';
-import { refreshGeneratedPayroll } from '../services/payroll.js';
+import { refreshPayrollForSalaryChange } from '../services/payroll.js';
 
 const r = Router();
 r.use(protect);
@@ -33,7 +33,7 @@ r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   if (!(Number(basic) >= 0) || basic === '' || basic === undefined) throw new HttpError(400, 'Enter a valid basic salary.');
   if (!isValidDate(effectiveFrom)) throw new HttpError(400, 'Enter a valid effective date.');
   const s = await Salary.create({ user: userId, basic: Number(basic), allowances: items(allowances), deductions: items(deductions), effectiveFrom, createdBy: req.user._id });
-  const refreshedPayroll = await refreshGeneratedPayroll(user._id, effectiveFrom);
+  const refreshedPayroll = await refreshPayrollForSalaryChange(user._id, effectiveFrom);
   await audit(req, 'SALARY_SET', 'Salary', s._id, `${user.name}: basic ${s.basic} from ${effectiveFrom}`);
   res.status(201).json({ salary: s, refreshedPayroll });
 }));

@@ -218,10 +218,12 @@ test('salary → payroll → payslip PDF, employee sees only own and only once p
   assert.equal((await api.post('/api/payroll/mark-paid').set(as('hr')).send({ month })).status, 200);
   const pdf = await api.get(`/api/payroll/${id}/payslip`).set(as('emp'));
   assert.equal(pdf.status, 200); assert.match(pdf.headers['content-type'], /pdf/);
-  assert.equal((await api.post('/api/salary').set(as('hr')).send({
+  const retroactiveSalary = await api.post('/api/salary').set(as('hr')).send({
     userId: tok.empId, basic: 700000, effectiveFrom,
-  })).body.refreshedPayroll, 0);
-  assert.equal((await api.get(`/api/payroll?month=${month}`).set(as('hr'))).body.items[0].basic, 600000);
+  });
+  assert.equal(retroactiveSalary.body.refreshedPayroll, 1);
+  assert.equal((await api.get(`/api/payroll?month=${month}`).set(as('hr'))).body.items[0].basic, 700000);
+  assert.equal((await api.get(`/api/payroll/${id}/payslip`).set(as('admin'))).status, 200);
   assert.equal((await api.get(`/api/payroll/${id}/payslip`).set(as('admin'))).status, 200);
   assert.equal((await api.get('/api/payroll/my').set(as('emp'))).body.items.length, 1);
 });
