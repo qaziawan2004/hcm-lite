@@ -10,7 +10,7 @@ r.use(protect, rateLimit({ windowMs: 60 * 1000, limit: 20, skip: () => process.e
 
 r.get('/status', (_req, res) => res.json({ enabled: aiEnabled() }));
 
-const needAI = () => { if (!aiEnabled()) throw new HttpError(503, 'The AI assistant is not configured. Ask your admin to add an API key.'); };
+const needAI = () => { if (!aiEnabled()) throw new HttpError(503, 'The AI assistant is not configured. Ask your admin to add a Gemini or Anthropic API key to the server environment.'); };
 
 r.post('/chat', asyncHandler(async (req, res) => {
   needAI();

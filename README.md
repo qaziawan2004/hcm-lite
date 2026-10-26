@@ -15,7 +15,7 @@ Requirements: Node 20+ and MongoDB (local, or a free MongoDB Atlas cluster).
 ```bash
 # 1. API
 cd server
-cp .env.example .env        # set MONGODB_URI, JWT_SECRET, and SMTP settings (ANTHROPIC_API_KEY is optional)
+cp .env.example .env        # set MONGODB_URI, JWT_SECRET, SMTP settings, and optionally GEMINI_API_KEY
 npm install
 npm run seed                # optional demo data (wipes the DB!)
 npm run dev                 # http://localhost:3000
@@ -27,7 +27,7 @@ npm install
 npm run dev                 # http://localhost:5173
 ```
 
-The Vite development proxy forwards `/api` to `http://localhost:3000`, matching the server's default `PORT`. If MongoDB Atlas SRV DNS lookups fail on your network, set `MONGODB_DNS_SERVERS` in the server `.env` to a comma-separated list of DNS resolver IP addresses; the server applies these before connecting.
+The Vite development proxy forwards `/api` to `http://localhost:3000`, matching the server's default `PORT`. If that port is already occupied, set `PORT=3001` in `server/.env` and `VITE_API_PROXY_TARGET=http://localhost:3001` in `client/.env.local`, then restart both development servers. If MongoDB Atlas SRV DNS lookups fail on your network, set `MONGODB_DNS_SERVERS` in the server `.env` to reachable DNS resolver IP addresses separated by commas; the server applies these before connecting.
 
 **Fresh setup (no seed):** open the app on an empty database. The sign-in page turns into "Set up your company" and creates the company plus the first admin. After that, the admin registers HR and employees.
 
@@ -73,7 +73,8 @@ Nobody can approve their own leave. HR and admin leave requests are approved by 
 
 ## AI assistant
 
-- Backed by the Anthropic Messages API (`ANTHROPIC_API_KEY`, model via `AI_MODEL`).
+- Uses Google's Gemini API (`GEMINI_API_KEY`, model via `GEMINI_MODEL`) by default. Gemini offers a free tier subject to Google's current availability, quotas, and terms; it is not unlimited or guaranteed to remain free. Create the key in Google AI Studio and store it only as a server environment variable. Never expose it through a `VITE_` variable or frontend code.
+- To select Gemini explicitly, set `AI_PROVIDER=gemini`. Anthropic remains available by setting `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, and optionally `AI_MODEL`. If `AI_PROVIDER` is omitted, a configured Gemini key is preferred; otherwise a configured Anthropic key is used.
 - **Data questions:** the server builds a role-scoped snapshot of real records (balances, attendance, leaves, payslips; plus company stats, pending requests and the employee directory for HR/admin) and the model answers only from it. Employees never receive other people's data. No individual salaries are sent to the model.
 - **Policy questions:** answered from `server/src/services/policy.js`. Edit that file to match your company.
 - **Dashboard summary:** button on the dashboard.
@@ -93,8 +94,11 @@ Deploy the frontend and API together as **one Vercel project** so the app and `/
    - `MONGODB_URI` — hosted MongoDB connection string
    - `JWT_SECRET` — long, random secret; keep it private
    - `APP_TZ` — e.g. `Asia/Karachi`
-   - `ANTHROPIC_API_KEY` — optional; enables AI chat and dashboard summaries
-   - `AI_MODEL` — optional; defaults to `claude-sonnet-5-5`
+   - `AI_PROVIDER` — optional; defaults to Gemini when a Gemini key is configured
+   - `GEMINI_API_KEY` — optional; enables AI chat and dashboard summaries using Google's Gemini API free tier (subject to quotas and terms)
+   - `GEMINI_MODEL` — optional; defaults to `gemini-2.5-flash`
+   - `ANTHROPIC_API_KEY` — optional alternative provider key
+   - `AI_MODEL` — optional Anthropic model; defaults to `claude-sonnet-5-5`
    - `JWT_EXPIRES_IN` — optional; defaults to the application default
    - `VITE_SHOW_DEMO` — optional; set to `true` only if demo-login buttons are desired
 5. Leave `VITE_API_URL` unset or empty. The frontend uses `/api` on its own domain. `CORS_ORIGIN` is optional for this single-domain setup; Vercel deployment and production domains are allowed automatically. If you add another frontend origin, list it in `CORS_ORIGIN`.

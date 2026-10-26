@@ -7,9 +7,40 @@ import policy from './policy.js';
 import { companyStats, employeeStats } from './stats.js';
 import { today, isValidDate, addDays } from '../utils/dates.js';
 
-export const aiEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
+function configuredProvider() {
+  return process.env.AI_PROVIDER?.trim().toLowerCase()
+    || (process.env.GEMINI_API_KEY ? 'gemini' : process.env.ANTHROPIC_API_KEY ? 'anthropic' : 'gemini');
+}
+
+export const aiEnabled = () => {
+  const provider = configuredProvider();
+  return provider === 'gemini' ? Boolean(process.env.GEMINI_API_KEY)
+    : provider === 'anthropic' ? Boolean(process.env.ANTHROPIC_API_KEY)
+      : false;
+};
 
 export async function callLLM(system, messages, maxTokens = 700) {
+  const provider = configuredProvider();
+  if (provider === 'gemini') {
+    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is required when AI_PROVIDER is gemini.');
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: messages.map(({ role, content }) => ({ role: role === 'assistant' ? 'model' : 'user', parts: [{ text: content }] })),
+        generationConfig: { maxOutputTokens: maxTokens },
+      }),
+    });
+    if (!res.ok) throw new Error(`Gemini request failed (${res.status}). Check the server AI provider configuration and quota.`);
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.filter((part) => typeof part.text === 'string').map((part) => part.text).join('\n').trim();
+    if (!text) throw new Error('Gemini returned no text. Try again or check the provider response.');
+    return text;
+  }
+  if (provider !== 'anthropic') throw new Error(`Unsupported AI_PROVIDER: ${provider}. Use gemini or anthropic.`);
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is required when AI_PROVIDER is anthropic.');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },

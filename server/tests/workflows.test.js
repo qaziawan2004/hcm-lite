@@ -32,6 +32,9 @@ const signIn = async (email, password) => {
 const as = (role) => ({ Authorization: `Bearer ${tok[role]}` });
 
 before(async () => {
+  delete process.env.AI_PROVIDER;
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
   setEmailSenderForTests(async (message) => { sentEmails.push(message); });
   mongod = await MongoMemoryServer.create();
   await mongoose.connect(mongod.getUri());
@@ -248,4 +251,33 @@ test('dashboards compute from DB; AI leave draft works without API key', async (
   const draft = await api.post('/api/ai/leave-draft').set(as('emp')).send({ text: 'I have a fever, need sick leave tomorrow' });
   assert.equal(draft.body.draft.type, 'sick');
   assert.equal((await api.post('/api/ai/chat').set(as('emp')).send({ messages: [{ role: 'user', content: 'hi' }] })).status, 503);
+});
+
+test('Gemini powers authenticated AI chat when configured', async () => {
+  const originalFetch = global.fetch;
+  process.env.AI_PROVIDER = 'gemini';
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  let requestOptions;
+  global.fetch = async (url, options) => {
+    requestOptions = { url, options };
+    return new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'You have 12 days available.' }] } }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const response = await api.post('/api/ai/chat').set(as('emp')).send({
+      messages: [{ role: 'user', content: 'How much leave do I have?' }],
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.reply, 'You have 12 days available.');
+    assert.match(requestOptions.url, /models\/gemini-2\.5-flash:generateContent$/);
+    assert.equal(requestOptions.options.headers['x-goog-api-key'], 'test-gemini-key');
+    const body = JSON.parse(requestOptions.options.body);
+    assert.equal(body.contents[0].role, 'user');
+    assert.ok(body.systemInstruction.parts[0].text.includes('DATA (live from the database'));
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.AI_PROVIDER;
+    delete process.env.GEMINI_API_KEY;
+  }
 });
