@@ -30,19 +30,20 @@ export default function Payroll() {
 
   return (
     <>
-      <PageHeader title="Payroll" sub="Net pay = basic + allowances − fixed deductions − unpaid days (gross ÷ working days per day).">
+      <PageHeader title="Payroll" sub="HCM Lite records salary details and payment status only. It does not transfer money, connect to bank accounts, or verify salary transfers. It does not calculate or certify taxes.">
         <input type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value || thisMonth())} aria-label="Payroll month" style={{ width: 'auto' }} />
         <button className="btn accent" onClick={run}>Run payroll</button>
         <button className="btn" disabled={!hasUnpaid} onClick={() => setConfirm({ kind: 'pay' })}>Mark all as paid</button>
       </PageHeader>
       {loading ? <Loader /> : !data.items.length ? <div className="card"><Empty title={`No payroll for ${monthLabel(month)}`}>Make sure each employee has a salary, then choose Run payroll. Running it twice never duplicates payslips.</Empty></div> : <>
+        <div className="notice" role="note">Payroll amounts are records for your organization. Marking payroll as paid is a manual status update and does not confirm that a transfer occurred.</div>
         <div className="grid g4" style={{ marginBottom: '1rem' }}><Stat label="Gross pay" value={money(data.totals.gross, cur)} /><Stat label="Total deductions" value={money(data.totals.deductions, cur)} tone="warn" /><Stat label="Net payable" value={money(data.totals.net, cur)} tone="good" /></div>
         <div className="table-wrap"><table className="tbl"><thead><tr><th>Employee</th><th className="num">Present</th><th className="num">Paid leave</th><th className="num">Unpaid days</th><th className="num">Gross</th><th className="num">Deductions</th><th className="num">Net pay</th><th>Status</th><th /></tr></thead>
           <tbody>{data.items.map((p) => <tr key={p._id}><td data-label="Employee">{p.user?.name}<br /><small>{p.user?.employeeId}</small></td><td data-label="Present" className="num">{p.presentDays}/{p.workingDays}</td><td data-label="Paid leave" className="num">{p.paidLeaveDays}</td><td data-label="Unpaid days" className="num">{p.unpaidDays}</td>
             <td data-label="Gross" className="num">{money(p.gross, cur)}</td><td data-label="Deductions" className="num">{money(p.totalDeductions, cur)}</td><td data-label="Net pay" className="num"><strong>{money(p.netPay, cur)}</strong></td><td data-label="Status"><Badge>{p.status}</Badge></td>
             <td data-label=""><div className="row gap"><button className="btn ghost sm" onClick={() => download(p)}>PDF</button>
               {user.role === 'admin' && p.status === 'generated' && <button className="btn ghost sm" onClick={() => setConfirm({ kind: 'del', id: p._id })}>Delete</button>}</div></td></tr>)}</tbody></table></div></>}
-      {confirm?.kind === 'pay' && <Confirm title={`Mark ${monthLabel(month)} payroll as paid?`} message="Employees will be notified and can download their payslips. Paid payroll can no longer be deleted." yesLabel="Mark as paid" onYes={pay} onNo={() => setConfirm(null)} />}
+      {confirm?.kind === 'pay' && <Confirm title={`Mark ${monthLabel(month)} payroll as paid?`} message="This manually updates the payment status and notifies employees. HCM Lite does not transfer money or verify that payment occurred." yesLabel="Mark as paid" onYes={pay} onNo={() => setConfirm(null)} />}
       {confirm?.kind === 'del' && <Confirm title="Delete this payroll record?" message="Use this to fix salary or attendance data, then run payroll again." danger yesLabel="Delete" onYes={() => del(confirm.id)} onNo={() => setConfirm(null)} />}
     </>
   );

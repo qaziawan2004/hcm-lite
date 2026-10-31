@@ -11,7 +11,15 @@ const userSchema = new mongoose.Schema({
   designation: { type: String, default: '' },
   phone: { type: String, default: '' },
   joinDate: { type: String, default: () => new Date().toISOString().slice(0, 10) },
-  status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  status: { type: String, enum: ['active', 'inactive', 'terminated'], default: 'active' },
+  terminationDate: { type: String, default: null },
+  statusHistory: [{
+    from: { type: String, enum: ['active', 'inactive', 'terminated'], required: true },
+    to: { type: String, enum: ['active', 'inactive', 'terminated'], required: true },
+    date: { type: String, required: true },
+    reason: { type: String, default: '' },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  }],
   mustChangePassword: { type: Boolean, default: false },
   leaveBalance: {
     annual: { type: Number, default: 14 },

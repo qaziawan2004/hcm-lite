@@ -6,6 +6,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { HttpError, asyncHandler, paginate } from '../utils/http.js';
 import { audit, notify } from '../services/log.js';
 import { ensureEmailConfigured, sendWelcomeEmail } from '../services/email.js';
+import { today } from '../utils/dates.js';
 
 const r = Router();
 r.use(protect);
@@ -40,23 +41,47 @@ const assignMissingEmployeeIds = async () => {
 };
 // HR may only manage plain employees; admins manage everyone.
 const canManage = (actor, target) => actor.role === 'admin' || target.role === 'employee';
+const employeeFilter = (query) => {
+  const f = {};
+  if (query.department) f.department = query.department;
+  if (query.status) f.status = query.status;
+  if (query.role) f.role = query.role;
+  if (query.q) {
+    const rx = new RegExp(String(query.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    f.$or = [{ name: rx }, { email: rx }, { employeeId: rx }];
+  }
+  return f;
+};
+const csvCell = (value) => {
+  let text = String(value ?? '');
+  if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+};
 
 r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   await assignMissingEmployeeIds();
-  const { q, department, status, role } = req.query;
   const { page, limit, skip } = paginate(req.query);
-  const f = {};
-  if (department) f.department = department;
-  if (status) f.status = status;
-  if (role) f.role = role;
-  if (q) { const rx = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); f.$or = [{ name: rx }, { email: rx }, { employeeId: rx }]; }
-  const [items, total] = await Promise.all([User.find(f).sort({ employeeId: 1 }).skip(skip).limit(limit), User.countDocuments(f)]);
+  const f = employeeFilter(req.query);
+  const [items, total] = await Promise.all([
+    User.find(f).populate('statusHistory.changedBy', 'name').sort({ employeeId: 1 }).skip(skip).limit(limit),
+    User.countDocuments(f),
+  ]);
   res.json({ items, total, page, pages: Math.ceil(total / limit) });
 }));
 
 // Lightweight list for dropdowns
 r.get('/options', authorize('admin', 'hr'), asyncHandler(async (_req, res) =>
   res.json({ items: await User.find({ status: 'active' }).select('name employeeId department role').sort({ name: 1 }) })));
+
+r.get('/export.csv', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
+  await assignMissingEmployeeIds();
+  const users = await User.find(employeeFilter(req.query)).sort({ employeeId: 1 });
+  const columns = ['employeeId', 'name', 'email', 'department', 'designation', 'phone', 'joinDate', 'status', 'terminationDate'];
+  const rows = [columns, ...users.map((user) => columns.map((key) => user[key]))];
+  res.type('text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="employees.csv"');
+  res.send(rows.map((row) => row.map(csvCell).join(',')).join('\r\n'));
+}));
 
 r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   const { name, email, role = 'employee', department, designation, phone, joinDate, password } = req.body;
@@ -111,14 +136,22 @@ r.put('/:id', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
 }));
 
 r.patch('/:id/status', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  if (!['active', 'inactive'].includes(status)) throw new HttpError(400, 'Status must be active or inactive.');
+  const { status, reason = '' } = req.body;
+  if (!['active', 'inactive', 'terminated'].includes(status)) throw new HttpError(400, 'Status must be active, inactive or terminated.');
+  if (typeof reason !== 'string' || reason.length > 300) throw new HttpError(400, 'Status reason must be 300 characters or fewer.');
+  if (status === 'terminated' && !reason.trim()) throw new HttpError(400, 'Add a reason when terminating an employee.');
   const user = await User.findById(req.params.id);
   if (!user) throw new HttpError(404, 'Employee not found.');
   if (String(user._id) === String(req.user._id)) throw new HttpError(400, 'You cannot deactivate your own account.');
   if (!canManage(req.user, user)) throw new HttpError(403, 'Only an admin can change HR or admin accounts.');
-  user.status = status; await user.save();
-  await audit(req, status === 'active' ? 'EMPLOYEE_ACTIVATED' : 'EMPLOYEE_DEACTIVATED', 'User', user._id, user.name);
+  if (user.status === status) throw new HttpError(409, `This employee is already ${status}.`);
+  const previousStatus = user.status;
+  user.status = status;
+  user.terminationDate = status === 'terminated' ? today() : null;
+  user.statusHistory.push({ from: previousStatus, to: status, date: today(), reason: reason.trim(), changedBy: req.user._id });
+  await user.save();
+  const action = status === 'terminated' ? 'EMPLOYEE_TERMINATED' : status === 'active' ? 'EMPLOYEE_ACTIVATED' : 'EMPLOYEE_DEACTIVATED';
+  await audit(req, action, 'User', user._id, `${user.name}: ${previousStatus} → ${status}${reason ? ` (${reason.trim()})` : ''}`);
   res.json({ user });
 }));
 

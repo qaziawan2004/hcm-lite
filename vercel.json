@@ -2,6 +2,7 @@
   "version": 2,
   "installCommand": "npm install --include=optional",
   "buildCommand": "npm run build",
+  "devCommand": "npm run dev --workspace hcm-lite-client -- --host 0.0.0.0 --port $PORT",
   "outputDirectory": "client/dist",
   "rewrites": [
     {

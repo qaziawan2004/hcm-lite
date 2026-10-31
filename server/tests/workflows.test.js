@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { setEmailSenderForTests } from '../src/services/email.js';
 import LoginChallenge from '../src/models/LoginChallenge.js';
+import { today } from '../src/utils/dates.js';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
@@ -163,6 +164,42 @@ test('attendance: single check-in per day, check-out requires check-in', async (
   assert.equal((await api.post('/api/attendance/check-out').set(as('emp'))).status, 200);
 });
 
+test('termination is recorded, blocks access, and excludes former employees from current dashboard counts and payroll', async () => {
+  const former = await api.post('/api/employees').set(as('hr')).send({
+    name: 'Former Employee', email: 'former@t.com', password: 'Password1', department: 'Former Team',
+  });
+  assert.equal(former.status, 201);
+  tok.formerId = former.body.user._id;
+  assert.equal((await api.patch(`/api/employees/${tok.formerId}/status`).set(as('hr')).send({ status: 'terminated' })).status, 400);
+
+  const terminated = await api.patch(`/api/employees/${tok.formerId}/status`).set(as('hr')).send({
+    status: 'terminated', reason: 'Employment ended',
+  });
+  assert.equal(terminated.status, 200);
+  assert.equal(terminated.body.user.status, 'terminated');
+  assert.equal(terminated.body.user.statusHistory[0].from, 'active');
+  assert.equal(terminated.body.user.statusHistory[0].reason, 'Employment ended');
+  assert.ok(terminated.body.user.terminationDate);
+  assert.equal((await api.post('/api/auth/login').send({ email: 'former@t.com', password: 'Password1' })).status, 403);
+  const Salary = (await import('../src/models/Salary.js')).default;
+  await Salary.create({ user: tok.formerId, basic: 25000, effectiveFrom: '2020-01-01' });
+
+  const Attendance = (await import('../src/models/Attendance.js')).default;
+  const date = new Date().toLocaleDateString('en-CA', { timeZone: process.env.APP_TZ || 'Asia/Karachi' });
+  await Attendance.create({ user: tok.formerId, date, checkIn: new Date(), status: 'present' });
+  const dashboard = await api.get('/api/dashboard').set(as('admin'));
+  assert.equal(dashboard.body.totalEmployees, 3);
+  assert.equal(dashboard.body.inactiveEmployees, 0);
+  assert.equal(dashboard.body.presentToday, 1);
+  assert.equal(dashboard.body.byDepartment.some((department) => department.name === 'Former Team'), false);
+
+  const exported = await api.get('/api/employees/export.csv?status=terminated').set(as('hr'));
+  assert.equal(exported.status, 200);
+  assert.match(exported.headers['content-type'], /text\/csv/);
+  assert.match(exported.text, /Former Employee/);
+  assert.equal((await api.get('/api/employees/export.csv').set(as('emp'))).status, 403);
+});
+
 test('leave workflow: apply, overlap blocked, self-approval blocked, HR approves, balance deducted', async () => {
   const from = nextWeekday(3);
   assert.equal((await api.post('/api/leaves').set(as('emp')).send({
@@ -188,14 +225,18 @@ test('HR leave can only be approved by admin', async () => {
 });
 
 test('salary → payroll → payslip PDF, employee sees only own and only once paid', async () => {
-  const month = new Date().toISOString().slice(0, 7);
+  const month = today().slice(0, 7);
   assert.equal((await api.post('/api/salary').set(as('hr')).send({ userId: tok.empId, basic: 100000, effectiveFrom: '2020-01-01', allowances: [{ name: 'Rent', amount: 20000 }], deductions: [{ name: 'Tax', amount: 5000 }] })).status, 201);
-  const effectiveFrom = new Date().toLocaleDateString('en-CA', { timeZone: process.env.APP_TZ || 'Asia/Karachi' });
+  const effectiveFrom = today();
   assert.equal((await api.post('/api/salary').set(as('hr')).send({ userId: tok.empId, basic: 500000, effectiveFrom })).status, 201);
   const currentSalary = await api.get('/api/salary').set(as('hr'));
-  assert.equal(currentSalary.body.items.find((row) => row.user._id === tok.empId).salary.basic, 500000);
+  assert.equal(
+    currentSalary.body.items.find((row) => row.user._id === tok.empId).salary.basic,
+    500000,
+    `effectiveFrom=${effectiveFrom}; salary=${JSON.stringify(currentSalary.body.items.find((row) => row.user._id === tok.empId).salary)}`,
+  );
   const employeeSalary = await api.get('/api/salary/my').set(as('emp'));
-  assert.equal(employeeSalary.body.salary.basic, 500000);
+  assert.equal(employeeSalary.body.salary.basic, 500000, JSON.stringify(employeeSalary.body.salary));
   const run = await api.post('/api/payroll/run').set(as('hr')).send({ month });
   assert.equal(run.status, 200); assert.equal(run.body.created, 1);
   const payroll = await api.get(`/api/payroll?month=${month}`).set(as('hr'));

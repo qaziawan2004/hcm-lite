@@ -10,22 +10,27 @@ export async function companyStats() {
   const date = today();
   const month = currentMonth();
   const { first, last } = monthRange(month);
-  const [totalEmployees, byDept, presentToday, lateToday, onLeaveToday, pendingLeaves, payrollRows, leaveByType] = await Promise.all([
-    User.countDocuments({ status: 'active' }),
+  const [activeUsers, inactiveEmployees, byDept, payrollRows, leaveByType] = await Promise.all([
+    User.find({ status: 'active' }).select('_id'),
+    User.countDocuments({ status: 'inactive' }),
     User.aggregate([{ $match: { status: 'active' } }, { $group: { _id: { $ifNull: ['$department', 'Unassigned'] }, count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
-    Attendance.countDocuments({ date }),
-    Attendance.countDocuments({ date, status: 'late' }),
-    Leave.countDocuments({ status: 'approved', from: { $lte: date }, to: { $gte: date } }),
-    Leave.countDocuments({ status: 'pending' }),
     Payroll.find({ month }),
     Leave.aggregate([{ $match: { status: 'approved', from: { $gte: `${date.slice(0, 4)}-01-01` } } }, { $group: { _id: '$type', days: { $sum: '$days' } } }]),
+  ]);
+  const activeIds = activeUsers.map((user) => user._id);
+  const [presentToday, lateToday, onLeaveToday, pendingLeaves] = await Promise.all([
+    Attendance.countDocuments({ date, user: { $in: activeIds } }),
+    Attendance.countDocuments({ date, status: 'late', user: { $in: activeIds } }),
+    Leave.countDocuments({ user: { $in: activeIds }, status: 'approved', from: { $lte: date }, to: { $gte: date } }),
+    Leave.countDocuments({ user: { $in: activeIds }, status: 'pending' }),
   ]);
   const days = [];
   for (let i = 6; i >= 0; i--) { const d = addDays(date, -i); if (!isWeekend(d)) days.push(d); }
   const trend = await Promise.all(days.map(async (d) => ({ date: d.slice(5), present: await Attendance.countDocuments({ date: d }) })));
+  const totalEmployees = activeUsers.length;
   const absentToday = isWeekend(date) ? 0 : Math.max(0, totalEmployees - presentToday - onLeaveToday);
   return {
-    date, month, totalEmployees, presentToday, lateToday, onLeaveToday, absentToday, pendingLeaves,
+    date, month, totalEmployees, inactiveEmployees, presentToday, lateToday, onLeaveToday, absentToday, pendingLeaves,
     byDepartment: byDept.map((d) => ({ name: d._id || 'Unassigned', value: d.count })),
     attendanceTrend: trend,
     leaveByType: leaveByType.map((l) => ({ name: l._id, value: l.days })),

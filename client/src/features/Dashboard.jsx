@@ -84,6 +84,7 @@ export default function Dashboard() {
         {d.role === 'admin' && <>
           <div className="grid g4">
             <Stat label="Active employees" value={d.totalEmployees} tone="info" />
+            <Stat label="Inactive employees" value={d.inactiveEmployees} tone="warn" />
             <Stat label="Present today" value={d.presentToday} tone="good" sub={d.weekend ? 'Weekend' : undefined} />
             <Stat label="Late today" value={d.lateToday} tone="warn" />
             <Stat label="On leave today" value={d.onLeaveToday} tone="info" />
