@@ -24,7 +24,7 @@ export function CheckInCard({ onChange }) {
   return (
     <div className="clock">
       <div>
-        <div className="time">{now.toLocaleTimeString('en-GB')}</div>
+        <div className="time">{now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}</div>
         <small>{rec ? `Checked in at ${fmtTime(rec.checkIn)}${rec.status === 'late' ? ' (late)' : ''}${rec.checkOut ? ` · out at ${fmtTime(rec.checkOut)} · ${rec.hours}h` : ''}` : 'You have not checked in yet today.'}</small>
       </div>
       {!rec && <button className="btn accent" disabled={busy} onClick={() => act('check-in')}>Check in</button>}
