@@ -397,3 +397,58 @@ test('Gemini powers authenticated AI chat when configured', async () => {
     delete process.env.GEMINI_API_KEY;
   }
 });
+
+test('recruitment manages openings, candidate stages, permissions, and employee conversion', async () => {
+  const forbidden = await api.get('/api/recruitment/openings').set(as('emp'));
+  assert.equal(forbidden.status, 403);
+
+  const createdOpening = await api.post('/api/recruitment/openings').set(as('hr')).send({
+    title: 'Product Designer',
+    department: 'Design',
+    location: 'Remote',
+    employmentType: 'full-time',
+  });
+  assert.equal(createdOpening.status, 201);
+  const openingId = createdOpening.body.opening._id;
+
+  assert.equal((await api.post('/api/recruitment/openings').set(as('hr')).send({ title: '' })).status, 400);
+  const createdCandidate = await api.post('/api/recruitment/candidates').set(as('hr')).send({
+    name: 'Candidate One',
+    email: 'candidate-one@t.com',
+    phone: '555-0101',
+    source: 'Referral',
+    opening: openingId,
+  });
+  assert.equal(createdCandidate.status, 201);
+  const candidateId = createdCandidate.body.candidate._id;
+  assert.equal((await api.post('/api/recruitment/candidates').set(as('hr')).send({
+    name: 'Bad candidate', email: 'invalid', opening: openingId,
+  })).status, 400);
+  assert.equal((await api.patch(`/api/recruitment/candidates/${candidateId}/stage`).set(as('emp')).send({ stage: 'Screening' })).status, 403);
+  assert.equal((await api.patch(`/api/recruitment/candidates/${candidateId}/stage`).set(as('hr')).send({ stage: 'Unknown' })).status, 400);
+
+  const screening = await api.patch(`/api/recruitment/candidates/${candidateId}/stage`).set(as('hr')).send({ stage: 'Screening' });
+  assert.equal(screening.status, 200);
+  const pipeline = await api.get('/api/recruitment/pipeline?q=Candidate').set(as('hr'));
+  assert.equal(pipeline.body.total, 1);
+  assert.equal(pipeline.body.counts.Screening, 1);
+  assert.equal(pipeline.body.items[0].opening.title, 'Product Designer');
+
+  assert.equal((await api.post(`/api/recruitment/candidates/${candidateId}/convert`).set(as('hr'))).status, 409);
+  assert.equal((await api.patch(`/api/recruitment/candidates/${candidateId}/stage`).set(as('hr')).send({ stage: 'Hired' })).status, 200);
+  const converted = await api.post(`/api/recruitment/candidates/${candidateId}/convert`).set(as('hr'));
+  assert.equal(converted.status, 201);
+  assert.equal(converted.body.employee.role, 'employee');
+  assert.equal(converted.body.employee.email, 'candidate-one@t.com');
+  assert.equal(converted.body.employee.designation, 'Product Designer');
+  assert.equal(converted.body.employee.mustChangePassword, true);
+  assert.ok(converted.body.temporaryPassword);
+  assert.equal((await api.post(`/api/recruitment/candidates/${candidateId}/convert`).set(as('hr'))).status, 409);
+  const joined = await api.get('/api/recruitment/pipeline').set(as('admin'));
+  assert.equal(joined.body.counts.Joined, 1);
+
+  assert.equal((await api.patch(`/api/recruitment/openings/${openingId}/status`).set(as('hr')).send({ status: 'closed' })).status, 200);
+  assert.equal((await api.post('/api/recruitment/candidates').set(as('hr')).send({
+    name: 'Late applicant', email: 'late@t.com', opening: openingId,
+  })).status, 400);
+});

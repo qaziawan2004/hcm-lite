@@ -44,7 +44,8 @@ r.get('/pipeline', asyncHandler(async (req, res) => {
   if (req.query.opening) filter.opening = req.query.opening;
   if (req.query.q) {
     const rx = new RegExp(String(req.query.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    filter.$or = [{ name: rx }, { email: rx }, { source: rx }];
+    const matchingOpenings = await JobOpening.find({ title: rx }).distinct('_id');
+    filter.$or = [{ name: rx }, { email: rx }, { source: rx }, { opening: { $in: matchingOpenings } }];
   }
   const [total, items, grouped] = await Promise.all([
     Candidate.countDocuments(filter),
