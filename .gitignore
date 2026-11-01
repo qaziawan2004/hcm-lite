@@ -5,4 +5,4 @@ node_modules/
 dist/
 .vercel/
 *.log
-
+client/src/Assets
