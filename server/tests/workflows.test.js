@@ -209,6 +209,8 @@ test('employee list assigns IDs to legacy employees without IDs', async () => {
     );
     const joined = await api.get('/api/employees?q=Legacy&sort=joined-asc').set(as('admin'));
     assert.deepEqual(joined.body.items.map((user) => user.name), ['Legacy One', 'Legacy Two']);
+    const ownerFirst = await api.get('/api/employees?sort=joined-desc').set(as('admin'));
+    assert.equal(ownerFirst.body.items[0].role, 'admin');
   } finally {
     await User.deleteMany({ email: { $in: ['legacy-one@t.com', 'legacy-two@t.com'] } });
   }
