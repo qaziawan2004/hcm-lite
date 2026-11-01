@@ -37,8 +37,10 @@ function EmployeeForm({ initial, onClose, onSaved }) {
           <Field label="Designation"><select value={f.designation} onChange={set('designation')}><option value="">Select…</option>{designations.map((d) => <option key={d}>{d}</option>)}</select></Field>
           <Field label="Phone"><input value={f.phone} onChange={set('phone')} /></Field>
           <Field label="Join date"><input type="date" value={f.joinDate} onChange={set('joinDate')} /></Field>
-          <Field label="Role" hint={me.role !== 'admin' ? 'Only the owner can assign HR or owner roles.' : undefined}>
-            <select value={f.role} onChange={set('role')} disabled={me.role !== 'admin'}><option value="employee">Employee</option><option value="hr">HR</option><option value="admin">Owner</option></select></Field>
+          <Field label="Role" hint={me.role !== 'admin' ? 'Only the owner can assign HR roles.' : undefined}>
+            {initial?.role === 'admin'
+              ? <strong>Owner</strong>
+              : <select value={f.role} onChange={set('role')} disabled={me.role !== 'admin'}><option value="employee">Employee</option><option value="hr">HR</option></select>}</Field>
         </div>
         {!edit && <small>A temporary password is generated and shown once after you save.</small>}
         <div className="row gap end" style={{ marginTop: '1rem' }}><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" disabled={busy}>{busy ? 'Saving…' : edit ? 'Save changes' : 'Register'}</button></div>

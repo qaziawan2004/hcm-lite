@@ -115,7 +115,9 @@ test('OTP expiry and resend issue a fresh code', async () => {
   assert.equal((await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') })).status, 200);
 });
 
-test('admin creates HR and employee with optional gender; HR cannot create admin/HR', async () => {
+test('only first-run setup creates an admin; employee management can create HR and employee accounts', async () => {
+  const extraAdmin = await api.post('/api/employees').set(as('admin')).send({ name: 'Extra owner', email: 'extra-owner@t.com', role: 'admin' });
+  assert.equal(extraAdmin.status, 400);
   const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1', gender: 'female' });
   assert.equal(hr.status, 201);
   assert.equal(hr.body.user.gender, 'female');
@@ -132,6 +134,8 @@ test('admin creates HR and employee with optional gender; HR cannot create admin
   assert.equal(employeeLogin.body.user.role, 'employee');
   tok.emp = employeeLogin.body.token;
   tok.empId = emp.body.user._id;
+  assert.equal((await api.put(`/api/employees/${tok.empId}`).set(as('admin')).send({ role: 'admin' })).status, 400);
+  assert.equal((await api.put(`/api/employees/${(await api.get('/api/auth/me').set(as('admin'))).body.user._id}`).set(as('admin')).send({ role: 'employee' })).status, 400);
   const summary = await api.get('/api/employees/summary').set(as('hr'));
   assert.equal(summary.status, 200);
   assert.deepEqual(summary.body, { total: 3, active: 3, inactive: 0, onLeave: 0 });

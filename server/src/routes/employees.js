@@ -140,9 +140,9 @@ r.get('/export.csv', authorize('admin', 'hr'), asyncHandler(async (req, res) => 
 r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   const { name, email, role = 'employee', department, designation, phone, gender = '', joinDate, password } = req.body;
   if (!name || !email) throw new HttpError(400, 'Name and email are required.');
-  if (!['admin', 'hr', 'employee'].includes(role)) throw new HttpError(400, 'Invalid role.');
+  if (!['hr', 'employee'].includes(role)) throw new HttpError(400, 'Role must be HR or employee.');
   if (!['', 'male', 'female', 'prefer_not_to_say'].includes(gender)) throw new HttpError(400, 'Choose a valid gender option.');
-  if (role !== 'employee' && req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can create HR or admin accounts.');
+  if (role === 'hr' && req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can create HR accounts.');
   ensureEmailConfigured();
   const company = await Company.findOne();
   const temp = password || tempPassword();
@@ -198,6 +198,8 @@ r.put('/:id', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   if (b.role && b.role !== user.role) {
     if (req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can change roles.');
     if (String(user._id) === String(req.user._id)) throw new HttpError(400, 'You cannot change your own role.');
+    if (user.role === 'admin') throw new HttpError(400, 'The owner role cannot be changed.');
+    if (!['hr', 'employee'].includes(b.role)) throw new HttpError(400, 'Role must be HR or employee.');
     user.role = b.role;
   }
   if (b.leaveBalance && req.user.role) for (const k of ['annual', 'sick', 'casual']) if (b.leaveBalance[k] !== undefined) user.leaveBalance[k] = Number(b.leaveBalance[k]);

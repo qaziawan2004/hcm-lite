@@ -29,7 +29,7 @@ npm run dev                 # http://localhost:5173
 
 The Vite development proxy forwards `/api` to `http://localhost:3000`, matching the server's default `PORT`. If that port is already occupied, set `PORT=3001` in `server/.env` and `VITE_API_PROXY_TARGET=http://localhost:3001` in `client/.env.local`, then restart both development servers. If MongoDB Atlas SRV DNS lookups fail on your network, set `MONGODB_DNS_SERVERS` in the server `.env` to reachable DNS resolver IP addresses separated by commas; the server applies these before connecting.
 
-**Fresh setup (no seed):** open the app on an empty database. The sign-in page turns into "Set up your company" and creates the company plus the first admin. After that, the admin registers HR and employees.
+**Fresh setup (no seed):** open the app on an empty database. The sign-in page turns into "Set up your company" and creates the company plus the first admin/owner. Employee management can create employees and HR accounts, but cannot create or promote another owner.
 
 ### Email verification and two-step sign-in
 
@@ -71,6 +71,7 @@ Admin and HR users can create and close job openings, add candidates to open pos
 | AI assistant | company-wide data | company-wide data | own data only |
 
 Only employees can submit leave applications. HR and the owner review employee requests; owner and HR accounts do not have employee leave-application screens.
+The first-run company setup creates the sole owner account. Admins may assign HR or Employee roles, while HR users can create Employee accounts only.
 
 ## Business rules
 
