@@ -60,6 +60,18 @@ const csvCell = (value) => {
   if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 };
+const parseAge = (value) => {
+  if (value === undefined) return undefined;
+  if (value === '' || value === null) return null;
+  const age = typeof value === 'number' || (typeof value === 'string' && value.trim() !== '') ? Number(value) : NaN;
+  if (!Number.isInteger(age) || age < 0 || age > 120) throw new HttpError(400, 'Age must be a whole number between 0 and 120.');
+  return age;
+};
+const parseNationality = (value) => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || value.length > 100) throw new HttpError(400, 'Nationality must be 100 characters or fewer.');
+  return value.trim();
+};
 const photoUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 4 * 1024 * 1024, files: 1 },
@@ -130,7 +142,7 @@ r.get('/export.csv', authorize('admin', 'hr'), asyncHandler(async (req, res) => 
       ? { role: 1, joinDate: -1, _id: 1 }
       : { role: 1, employeeId: 1 };
   const users = await User.find(employeeFilter(req.query)).sort(sort);
-  const columns = ['employeeId', 'name', 'email', 'department', 'designation', 'phone', 'joinDate', 'status', 'terminationDate'];
+  const columns = ['employeeId', 'name', 'email', 'department', 'designation', 'phone', 'gender', 'age', 'nationality', 'joinDate', 'status', 'terminationDate'];
   const rows = [columns, ...users.map((user) => columns.map((key) => user[key]))];
   res.type('text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="employees.csv"');
@@ -142,12 +154,14 @@ r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   if (!name || !email) throw new HttpError(400, 'Name and email are required.');
   if (!['hr', 'employee'].includes(role)) throw new HttpError(400, 'Role must be HR or employee.');
   if (!['', 'male', 'female', 'prefer_not_to_say'].includes(gender)) throw new HttpError(400, 'Choose a valid gender option.');
+  const age = parseAge(req.body.age);
+  const nationality = parseNationality(req.body.nationality);
   if (role === 'hr' && req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can create HR accounts.');
   ensureEmailConfigured();
   const company = await Company.findOne();
   const temp = password || tempPassword();
   const user = await User.create({
-    name, email, role, department, designation, phone, gender, joinDate: joinDate || undefined, password: temp,
+    name, email, role, department, designation, phone, gender, age, nationality, joinDate: joinDate || undefined, password: temp,
     employeeId: await nextEmployeeId(), mustChangePassword: true, leaveBalance: company ? { annual: company.leaveQuota.annual, sick: company.leaveQuota.sick, casual: company.leaveQuota.casual } : undefined,
   });
   await sendWelcomeEmail(user);
@@ -159,9 +173,13 @@ r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
 r.put('/me/profile', asyncHandler(async (req, res) => {
   const { phone, name, gender } = req.body;
   if (gender !== undefined && !['', 'male', 'female', 'prefer_not_to_say'].includes(gender)) throw new HttpError(400, 'Choose a valid gender option.');
+  const age = parseAge(req.body.age);
+  const nationality = parseNationality(req.body.nationality);
   if (phone !== undefined) req.user.phone = phone;
   if (name) req.user.name = name;
   if (gender !== undefined) req.user.gender = gender;
+  if (age !== undefined) req.user.age = age;
+  if (nationality !== undefined) req.user.nationality = nationality;
   await req.user.save();
   await audit(req, 'PROFILE_UPDATED', 'User', req.user._id);
   res.json({ user: req.user });
@@ -193,7 +211,11 @@ r.put('/:id', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   if (!canManage(req.user, user)) throw new HttpError(403, 'Only an admin can edit HR or admin accounts.');
   const b = req.body;
   if (b.gender !== undefined && !['', 'male', 'female', 'prefer_not_to_say'].includes(b.gender)) throw new HttpError(400, 'Choose a valid gender option.');
+  const age = parseAge(b.age);
+  const nationality = parseNationality(b.nationality);
   for (const k of ['name', 'department', 'designation', 'phone', 'gender', 'joinDate']) if (b[k] !== undefined) user[k] = b[k];
+  if (age !== undefined) user.age = age;
+  if (nationality !== undefined) user.nationality = nationality;
   if (b.email) user.email = b.email;
   if (b.role && b.role !== user.role) {
     if (req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can change roles.');

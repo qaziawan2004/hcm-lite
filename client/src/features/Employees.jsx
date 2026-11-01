@@ -15,7 +15,7 @@ function EmployeeForm({ initial, onClose, onSaved }) {
   const edit = !!initial;
   const departments = company?.departments?.length ? company.departments : DEFAULT_DEPARTMENTS;
   const designations = company?.designations?.length ? company.designations : DEFAULT_DESIGNATIONS;
-  const [f, setF] = useState(initial ? { ...initial } : { name: '', email: '', role: 'employee', department: '', designation: '', phone: '', gender: '', joinDate: new Date().toLocaleDateString('en-CA') });
+  const [f, setF] = useState(initial ? { ...initial } : { name: '', email: '', role: 'employee', department: '', designation: '', phone: '', gender: '', age: '', nationality: '', joinDate: new Date().toLocaleDateString('en-CA') });
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
@@ -33,6 +33,8 @@ function EmployeeForm({ initial, onClose, onSaved }) {
           <Field label="Full name"><input value={f.name} onChange={set('name')} required /></Field>
           <Field label="Work email"><input type="email" value={f.email} onChange={set('email')} required /></Field>
           <Field label="Gender (optional)"><select value={f.gender || ''} onChange={set('gender')}><option value="">Prefer not to specify</option><option value="female">Female</option><option value="male">Male</option><option value="prefer_not_to_say">Prefer not to say</option></select></Field>
+          <Field label="Age (optional)"><input type="number" min="0" max="120" step="1" value={f.age ?? ''} onChange={set('age')} /></Field>
+          <Field label="Nationality (optional)"><input value={f.nationality || ''} onChange={set('nationality')} maxLength={100} /></Field>
           <Field label="Department"><select value={f.department} onChange={set('department')}><option value="">Select…</option>{departments.map((d) => <option key={d}>{d}</option>)}</select></Field>
           <Field label="Designation"><select value={f.designation} onChange={set('designation')}><option value="">Select…</option>{designations.map((d) => <option key={d}>{d}</option>)}</select></Field>
           <Field label="Phone"><input value={f.phone} onChange={set('phone')} /></Field>
@@ -96,6 +98,8 @@ export default function Employees() {
     <dl className="employee-card-details">
       <div><dt>Department</dt><dd>{u.department || '—'}</dd></div>
       <div><dt>Designation</dt><dd>{u.designation || '—'}</dd></div>
+      <div><dt>Age</dt><dd>{u.age ?? '—'}</dd></div>
+      <div><dt>Nationality</dt><dd>{u.nationality || '—'}</dd></div>
       <div><dt>Role</dt><dd>{u.role === 'admin' ? <span className="employee-owner-label">Owner</span> : u.role === 'hr' ? 'HR' : 'Employee'}</dd></div>
       <div><dt>Joined</dt><dd>{fmtDate(u.joinDate)}</dd></div>
     </dl>
@@ -138,8 +142,8 @@ export default function Employees() {
       {error && <div className="error">{error}</div>}
       {loading && !data ? <Loader /> : !data?.items.length ? <div className="card"><Empty title="No employees found">Try a different search, or register a new employee.</Empty></div> : <>
         {view === 'grid' ? <div className="employee-card-grid">{employeeCards}</div> :
-          <div className="table-wrap"><table className="tbl employee-table"><thead><tr><th>Employee</th><th>Employee ID</th><th>Department</th><th>Designation</th><th>Role</th><th>Status</th><th>Joined date</th><th>Actions</th></tr></thead>
-            <tbody>{data.items.map((u) => <tr key={u._id} className={u.role === 'admin' ? 'employee-owner-row' : ''}><td data-label="Employee"><div className="row gap"><Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" /><span><strong>{u.name}</strong><br /><small>{u.email}</small></span></div></td><td data-label="Employee ID"><span className="employee-id">{u.employeeId || '—'}</span></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role">{u.role === 'admin' ? <span className="employee-owner-label">Owner</span> : u.role === 'hr' ? 'HR' : 'Employee'}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td><td data-label="Joined date">{fmtDate(u.joinDate)}</td><td data-label="Actions">{renderActions(u)}</td></tr>)}</tbody></table></div>}
+          <div className="table-wrap"><table className="tbl employee-table"><thead><tr><th>Employee</th><th>Employee ID</th><th>Department</th><th>Designation</th><th>Age</th><th>Nationality</th><th>Role</th><th>Status</th><th>Joined date</th><th>Actions</th></tr></thead>
+            <tbody>{data.items.map((u) => <tr key={u._id} className={u.role === 'admin' ? 'employee-owner-row' : ''}><td data-label="Employee"><div className="row gap"><Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" /><span><strong>{u.name}</strong><br /><small>{u.email}</small></span></div></td><td data-label="Employee ID"><span className="employee-id">{u.employeeId || '—'}</span></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Age">{u.age ?? '—'}</td><td data-label="Nationality">{u.nationality || '—'}</td><td data-label="Role">{u.role === 'admin' ? <span className="employee-owner-label">Owner</span> : u.role === 'hr' ? 'HR' : 'Employee'}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td><td data-label="Joined date">{fmtDate(u.joinDate)}</td><td data-label="Actions">{renderActions(u)}</td></tr>)}</tbody></table></div>}
         <Pager page={data.page} pages={data.pages} onChange={setPage} /></>}
       {form && <EmployeeForm initial={form._id ? form : null} onClose={() => setForm(null)} onSaved={(created) => { setForm(null); refresh(); if (created) setPw(created); }} />}
       {actionEmployee && <Modal title={`Actions for ${actionEmployee.name}`} onClose={() => setActionEmployee(null)}>

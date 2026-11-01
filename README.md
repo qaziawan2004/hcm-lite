@@ -41,6 +41,8 @@ Configure SMTP on the **server** deployment using `SMTP_HOST`, `SMTP_PORT`, `SMT
 
 Profile photos are uploaded by the authenticated server to Cloudinary; the Cloudinary secret is never sent to the browser. Create a Cloudinary account and set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in `server/.env` for local development and in the Vercel project's server environment for deployed uploads. Restart local services or redeploy Vercel after setting them. The photo endpoint accepts JPEG, PNG, and WebP files up to 4 MB. Until Cloudinary is configured, uploads report that they are unavailable and users see their initials instead.
 
+Employee and HR accounts can include optional age and nationality details during registration. Users can update these details on their own profile, and HR/Admin users can view them in the employee directory.
+
 ### Recruitment
 
 Admin and HR users can create and close job openings, add candidates to open positions, search candidates by name/email/source or position title, and manage candidates in a Kanban pipeline: Applied, Screening, Interview, Offer, Hired, Joined, Rejected, and Dropped. Move candidates by dragging cards or selecting a stage. Converting a Hired candidate creates an employee account, sends the welcome email, and displays its one-time temporary password. Recruitment endpoints are protected for admin/HR roles.

@@ -118,17 +118,23 @@ test('OTP expiry and resend issue a fresh code', async () => {
 test('only first-run setup creates an admin; employee management can create HR and employee accounts', async () => {
   const extraAdmin = await api.post('/api/employees').set(as('admin')).send({ name: 'Extra owner', email: 'extra-owner@t.com', role: 'admin' });
   assert.equal(extraAdmin.status, 400);
-  const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1', gender: 'female' });
+  const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1', gender: 'female', age: 34, nationality: 'Canadian' });
   assert.equal(hr.status, 201);
   assert.equal(hr.body.user.gender, 'female');
+  assert.equal(hr.body.user.age, 34);
+  assert.equal(hr.body.user.nationality, 'Canadian');
   assert.ok(sentEmails.some((message) => message.to === 'hr@t.com' && message.subject === 'Welcome to HCM Lite'));
   const hrLogin = await signIn('hr@t.com', 'Password1');
   assert.equal(hrLogin.body.user.role, 'hr');
   tok.hr = hrLogin.body.token;
-  const emp = await api.post('/api/employees').set(as('hr')).send({ name: 'Emp', email: 'e@t.com', password: 'Password1', gender: 'male' });
+  const emp = await api.post('/api/employees').set(as('hr')).send({ name: 'Emp', email: 'e@t.com', password: 'Password1', gender: 'male', age: 28, nationality: 'Pakistani' });
   assert.equal(emp.status, 201);
   assert.equal(emp.body.user.gender, 'male');
+  assert.equal(emp.body.user.age, 28);
+  assert.equal(emp.body.user.nationality, 'Pakistani');
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad gender', email: 'bad-gender@t.com', gender: 'invalid' })).status, 400);
+  assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad age', email: 'bad-age@t.com', age: 28.5 })).status, 400);
+  assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad nationality', email: 'bad-nationality@t.com', nationality: 'N'.repeat(101) })).status, 400);
   assert.ok(sentEmails.some((message) => message.to === 'e@t.com' && message.subject === 'Welcome to HCM Lite'));
   const employeeLogin = await signIn('e@t.com', 'Password1');
   assert.equal(employeeLogin.body.user.role, 'employee');
@@ -140,8 +146,15 @@ test('only first-run setup creates an admin; employee management can create HR a
   assert.equal(summary.status, 200);
   assert.deepEqual(summary.body, { total: 3, active: 3, inactive: 0, onLeave: 0 });
   assert.equal((await api.get('/api/employees/summary').set(as('emp'))).status, 403);
-  const updatedProfile = await api.put('/api/employees/me/profile').set(as('emp')).send({ gender: 'female' });
+  const updatedProfile = await api.put('/api/employees/me/profile').set(as('emp')).send({ gender: 'female', age: 29, nationality: 'French' });
   assert.equal(updatedProfile.body.user.gender, 'female');
+  assert.equal(updatedProfile.body.user.age, 29);
+  assert.equal(updatedProfile.body.user.nationality, 'French');
+  assert.equal((await api.put('/api/employees/me/profile').set(as('emp')).send({ age: -1 })).status, 400);
+  const employeeList = await api.get('/api/employees').set(as('admin'));
+  const listedEmp = employeeList.body.items.find((user) => user._id === tok.empId);
+  assert.equal(listedEmp.age, 29);
+  assert.equal(listedEmp.nationality, 'French');
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad', email: 'b@t.com', role: 'hr', password: 'Password1' })).status, 403);
 });
 
@@ -269,6 +282,7 @@ test('termination is recorded, blocks access, and excludes former employees from
   assert.equal(exported.status, 200);
   assert.match(exported.headers['content-type'], /text\/csv/);
   assert.match(exported.text, /Former Employee/);
+  assert.ok(exported.text.split('\r\n')[0].includes('"age","nationality"'));
   assert.equal((await api.get('/api/employees/export.csv').set(as('emp'))).status, 403);
 });
 

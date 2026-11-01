@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema({
   avatarUrl: { type: String, default: '' },
   avatarPublicId: { type: String, default: '', select: false },
   gender: { type: String, enum: ['', 'male', 'female', 'prefer_not_to_say'], default: '' },
+  age: { type: Number, min: 0, max: 120, default: null },
+  nationality: { type: String, trim: true, maxlength: 100, default: '' },
   joinDate: { type: String, default: () => new Date().toISOString().slice(0, 10) },
   status: { type: String, enum: ['active', 'inactive', 'terminated'], default: 'active' },
   terminationDate: { type: String, default: null },
