@@ -261,6 +261,7 @@ a { color: var(--pine-3); } :focus-visible { outline-color: var(--pine-3); }
 .employee-card-details dd { overflow: hidden; margin: .1rem 0 0; font-size: .84rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .employee-card-terminated { margin: .7rem 0 0; color: var(--bad); font-size: .8rem; }
 .employee-owner-label { display: inline-flex; align-items: center; padding: .18rem .62rem; border: 1px solid #c5d5ff; border-radius: 999px; background: #eaf0ff; color: #1748b8; font-weight: 800; letter-spacing: .01em; }
+.tbl tbody tr.employee-owner-row, .tbl tbody tr.employee-owner-row:hover { background: #f0f4ff; }
 .employee-actions { display: flex; flex-wrap: wrap; gap: .35rem; min-width: 150px; }
 .employee-actions .btn { padding: .28rem .5rem; font-size: .76rem; }
 .tbl .employee-actions { min-width: 205px; }

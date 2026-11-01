@@ -170,7 +170,7 @@ r.put('/me/profile', asyncHandler(async (req, res) => {
 r.post('/me/profile/photo', parsePhoto, asyncHandler(async (req, res) => {
   if (!req.file) throw new HttpError(400, 'Choose a profile photo to upload.');
   if (!isValidImage(req.file)) throw new HttpError(400, 'The selected file is not a valid JPEG, PNG or WebP image.');
-  if (!cloudinaryConfigured()) throw new HttpError(503, 'Profile photo uploads are not configured. Ask your admin to configure Cloudinary.');
+  if (!cloudinaryConfigured()) throw new HttpError(503, 'Profile photo uploads are unavailable. Configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on the server, then restart or redeploy.');
 
   const uploaded = await uploadProfilePhoto(req.file.buffer, req.user._id);
   req.user.avatarUrl = uploaded.url;

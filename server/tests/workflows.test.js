@@ -182,6 +182,7 @@ test('profile photo upload validates image content and updates the signed-in use
     const unconfigured = await api.post('/api/employees/me/profile/photo').set(as('emp'))
       .attach('photo', png, { filename: 'profile.png', contentType: 'image/png' });
     assert.equal(unconfigured.status, 503);
+    assert.match(unconfigured.body.message, /CLOUDINARY_CLOUD_NAME.*CLOUDINARY_API_KEY.*CLOUDINARY_API_SECRET/);
   } finally {
     cloudinaryKeys.forEach((key, index) => {
       if (configuredValues[index] === undefined) delete process.env[key];
