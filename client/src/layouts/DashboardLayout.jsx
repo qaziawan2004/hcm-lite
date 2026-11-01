@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../api/client.js';
 import ChatWidget from '../components/ChatWidget.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 const I = {
   grid: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></>,
@@ -25,8 +26,6 @@ const NAV = [
   ['Administration', [['/company', 'Company setup', 'brief', ['admin']], ['/audit', 'Audit logs', 'shield', ['admin']]]],
   ['Account', [['/profile', 'My profile', 'user', ['admin', 'hr', 'employee']]]],
 ];
-const initials = (name = '') => name.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).slice(0, 2).join('').toUpperCase();
-
 export default function DashboardLayout() {
   const { user, company, logout } = useAuth();
   const nav = useNavigate();
@@ -64,7 +63,7 @@ export default function DashboardLayout() {
               </div>) : null;
           })}
         </nav>
-        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name || 'Complete your profile'}</strong><br /><small>Signed in as {user.role === 'admin' ? 'Owner' : user.role === 'hr' ? 'HR' : 'Employee'}</small></div></div>
+        <div className="who"><Avatar name={user.name} src={user.avatarUrl} /><div><strong>{user.name || 'Complete your profile'}</strong><br /><small>Signed in as {user.role === 'admin' ? 'Owner' : user.role === 'hr' ? 'HR' : 'Employee'}</small></div></div>
       </aside>
       <div className="main">
         <header className="top">
@@ -73,7 +72,7 @@ export default function DashboardLayout() {
           <div className="row gap">
             <button className="bell" onClick={() => nav('/notifications')} aria-label={`Notifications, ${unread} unread`}>🔔{unread > 0 && <i>{unread}</i>}</button>
             <button type="button" className="top-profile" onClick={() => nav('/profile')} aria-label={`Open ${user.name || 'your'} profile`}>
-              <span className="avatar">{initials(user.name)}</span>
+              <Avatar name={user.name} src={user.avatarUrl} />
               <span className="top-profile-name">{user.name}<small>{user.role === 'admin' ? 'Owner' : user.role === 'hr' ? 'HR' : 'Employee'}</small></span>
             </button>
             <button className="btn ghost sm" onClick={() => { logout(); nav('/login'); }}>Sign out</button>

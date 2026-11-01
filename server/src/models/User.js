@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
   department: { type: String, default: '' },
   designation: { type: String, default: '' },
   phone: { type: String, default: '' },
+  avatarUrl: { type: String, default: '' },
+  avatarPublicId: { type: String, default: '', select: false },
   gender: { type: String, enum: ['', 'male', 'female', 'prefer_not_to_say'], default: '' },
   joinDate: { type: String, default: () => new Date().toISOString().slice(0, 10) },
   status: { type: String, enum: ['active', 'inactive', 'terminated'], default: 'active' },

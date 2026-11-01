@@ -7,6 +7,8 @@ import { HttpError, asyncHandler, paginate } from '../utils/http.js';
 import { audit, notify } from '../services/log.js';
 import { ensureEmailConfigured, sendWelcomeEmail } from '../services/email.js';
 import { today } from '../utils/dates.js';
+import multer from 'multer';
+import { cloudinaryConfigured, uploadProfilePhoto } from '../services/cloudinary.js';
 
 const r = Router();
 r.use(protect);
@@ -57,6 +59,31 @@ const csvCell = (value) => {
   if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 };
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      callback(new HttpError(400, 'Choose a JPEG, PNG or WebP image.'));
+      return;
+    }
+    callback(null, true);
+  },
+});
+const isValidImage = ({ buffer, mimetype }) => {
+  if (mimetype === 'image/png') return buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (mimetype === 'image/jpeg') return buffer.length >= 3 && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255;
+  if (mimetype === 'image/webp') return buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+  return false;
+};
+const parsePhoto = (req, res, next) => photoUpload.single('photo')(req, res, (error) => {
+  if (error instanceof multer.MulterError) {
+    next(new HttpError(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400,
+      error.code === 'LIMIT_FILE_SIZE' ? 'Profile photos must be 4 MB or smaller.' : 'Upload one profile photo at a time.'));
+    return;
+  }
+  next(error);
+});
 
 r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   await assignMissingEmployeeIds();
@@ -110,6 +137,19 @@ r.put('/me/profile', asyncHandler(async (req, res) => {
   if (gender !== undefined) req.user.gender = gender;
   await req.user.save();
   await audit(req, 'PROFILE_UPDATED', 'User', req.user._id);
+  res.json({ user: req.user });
+}));
+
+r.post('/me/profile/photo', parsePhoto, asyncHandler(async (req, res) => {
+  if (!req.file) throw new HttpError(400, 'Choose a profile photo to upload.');
+  if (!isValidImage(req.file)) throw new HttpError(400, 'The selected file is not a valid JPEG, PNG or WebP image.');
+  if (!cloudinaryConfigured()) throw new HttpError(503, 'Profile photo uploads are not configured. Ask your admin to configure Cloudinary.');
+
+  const uploaded = await uploadProfilePhoto(req.file.buffer, req.user._id);
+  req.user.avatarUrl = uploaded.url;
+  req.user.avatarPublicId = uploaded.publicId;
+  await req.user.save();
+  await audit(req, 'PROFILE_PHOTO_UPDATED', 'User', req.user._id);
   res.json({ user: req.user });
 }));
 

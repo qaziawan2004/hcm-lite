@@ -8,6 +8,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { setEmailSenderForTests } from '../src/services/email.js';
 import LoginChallenge from '../src/models/LoginChallenge.js';
 import { today } from '../src/utils/dates.js';
+import { setCloudinaryUploaderForTests } from '../src/services/cloudinary.js';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
@@ -134,6 +135,55 @@ test('admin creates HR and employee with optional gender; HR cannot create admin
   const updatedProfile = await api.put('/api/employees/me/profile').set(as('emp')).send({ gender: 'female' });
   assert.equal(updatedProfile.body.user.gender, 'female');
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad', email: 'b@t.com', role: 'hr', password: 'Password1' })).status, 403);
+});
+
+test('profile photo upload validates image content and updates the signed-in user', async () => {
+  const uploaded = [];
+  setCloudinaryUploaderForTests(async (buffer, userId) => {
+    uploaded.push({ buffer, userId: String(userId) });
+    return { url: `https://res.cloudinary.com/test/image/upload/${userId}.png`, publicId: `hcm-lite/profile-photos/${userId}` };
+  });
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+  try {
+    const employee = await api.post('/api/employees/me/profile/photo').set(as('emp'))
+      .attach('photo', png, { filename: 'profile.png', contentType: 'image/png' });
+    assert.equal(employee.status, 200);
+    assert.match(employee.body.user.avatarUrl, /^https:\/\/res\.cloudinary\.com\//);
+    assert.equal(uploaded[0].userId, tok.empId);
+
+    const owner = await api.post('/api/employees/me/profile/photo').set(as('admin'))
+      .attach('photo', png, { filename: 'owner.png', contentType: 'image/png' });
+    assert.equal(owner.status, 200);
+    assert.equal(uploaded[1].userId, (await api.get('/api/auth/me').set(as('admin'))).body.user._id);
+
+    const invalid = await api.post('/api/employees/me/profile/photo').set(as('emp'))
+      .attach('photo', Buffer.from('not an image'), { filename: 'profile.png', contentType: 'image/png' });
+    assert.equal(invalid.status, 400);
+    const unsupported = await api.post('/api/employees/me/profile/photo').set(as('emp'))
+      .attach('photo', Buffer.from('file'), { filename: 'profile.txt', contentType: 'text/plain' });
+    assert.equal(unsupported.status, 400);
+    const oversized = await api.post('/api/employees/me/profile/photo').set(as('emp'))
+      .attach('photo', Buffer.alloc(4 * 1024 * 1024 + 1, 1), { filename: 'large.png', contentType: 'image/png' });
+    assert.equal(oversized.status, 413);
+    assert.equal((await api.post('/api/employees/me/profile/photo')).status, 401);
+  } finally {
+    setCloudinaryUploaderForTests(null);
+  }
+
+  const cloudinaryKeys = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
+  const configuredValues = cloudinaryKeys.map((key) => process.env[key]);
+  cloudinaryKeys.forEach((key) => delete process.env[key]);
+  try {
+    const unconfigured = await api.post('/api/employees/me/profile/photo').set(as('emp'))
+      .attach('photo', png, { filename: 'profile.png', contentType: 'image/png' });
+    assert.equal(unconfigured.status, 503);
+  } finally {
+    cloudinaryKeys.forEach((key, index) => {
+      if (configuredValues[index] === undefined) delete process.env[key];
+      else process.env[key] = configuredValues[index];
+    });
+  }
 });
 
 test('employee list assigns IDs to legacy employees without IDs', async () => {

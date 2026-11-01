@@ -4,6 +4,7 @@ import useApi from '../utils/useApi.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Badge, Confirm, Empty, Field, Loader, Modal, PageHeader, Pager, useToast } from '../components/ui.jsx';
 import { fmtDate, canManage } from '../utils/format.js';
+import Avatar from '../components/Avatar.jsx';
 
 const DEFAULT_DEPARTMENTS = ['Engineering', 'Human Resources', 'Finance', 'Sales', 'Operations'];
 const DEFAULT_DESIGNATIONS = ['Manager', 'Senior Associate', 'Associate', 'Intern'];
@@ -86,7 +87,7 @@ export default function Employees() {
       {error && <div className="error">{error}</div>}
       {loading && !data ? <Loader /> : !data?.items.length ? <div className="card"><Empty title="No employees found">Try a different search, or register a new employee.</Empty></div> : <>
         <div className="table-wrap"><table className="tbl"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Role</th><th>Joined</th><th>Status</th><th /></tr></thead>
-          <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="ID">{u.employeeId}</td><td data-label="Name">{u.name}<br /><small>{u.email}</small></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role"><Badge>{u.role === 'admin' ? 'Owner' : u.role === 'hr' ? 'HR' : 'Employee'}</Badge></td><td data-label="Joined">{fmtDate(u.joinDate)}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td>
+          <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="ID">{u.employeeId}</td><td data-label="Name"><div className="row gap"><Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" /><span>{u.name}<br /><small>{u.email}</small></span></div></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role"><Badge>{u.role === 'admin' ? 'Owner' : u.role === 'hr' ? 'HR' : 'Employee'}</Badge></td><td data-label="Joined">{fmtDate(u.joinDate)}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td>
             <td data-label="">{canManage(me, u) && <div className="row gap wrap"><button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
               {!!u.statusHistory?.length && <button className="btn ghost sm" onClick={() => setHistory(u)}>Status history</button>}
               {u._id !== me._id && <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'status' })}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>}

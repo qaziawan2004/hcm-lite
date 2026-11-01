@@ -37,6 +37,10 @@ New company admins and employee accounts receive a welcome email. Every password
 
 Configure SMTP on the **server** deployment using `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM` (optional; defaults to `SMTP_USER`). Use an app password where required by the email provider. `SMTP_SECURE` is normally `true` for port 465 and `false` for port 587. Account creation and sign-in verification require working SMTP configuration.
 
+### Profile photos
+
+Profile photos are uploaded by the authenticated server to Cloudinary; the Cloudinary secret is never sent to the browser. Create a Cloudinary account and set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in `server/.env` for local development and in the Vercel project's server environment for deployed uploads. Restart local services or redeploy Vercel after setting them. The photo endpoint accepts JPEG, PNG, and WebP files up to 4 MB. Until Cloudinary is configured, uploads report that they are unavailable and users see their initials instead.
+
 **Demo accounts (after `npm run seed`):**
 
 | Role | Email | Password |
@@ -93,6 +97,7 @@ Deploy the frontend and API together as **one Vercel project** so the app and `/
 4. Add these **Project Environment Variables** for Production (and Preview if needed):
    - `MONGODB_URI` — hosted MongoDB connection string
    - `JWT_SECRET` — long, random secret; keep it private
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — required for profile photo uploads; configure in Vercel Project Settings → Environment Variables, not as `VITE_` variables
    - `APP_TZ` — e.g. `Asia/Karachi`
    - `AI_PROVIDER` — optional; defaults to Gemini when a Gemini key is configured
    - `GEMINI_API_KEY` — optional; enables AI chat and dashboard summaries using Google's Gemini API free tier (subject to quotas and terms)
@@ -111,7 +116,7 @@ On an empty database, the sign-in page becomes **Set up your company** and creat
 For separate frontend and API Vercel projects:
 
 1. Deploy the frontend with **Root Directory** `client`, build command `npm run build`, and output directory `dist`. Set `VITE_API_URL` to the API deployment origin without a trailing slash or `/api`, then redeploy the frontend. The frontend does not proxy API requests to a fixed deployment; `VITE_API_URL` must point to your API project.
-2. Deploy the API with **Root Directory** `server` and Node.js 20 or newer. Configure `MONGODB_URI`, `JWT_SECRET`, and `CORS_ORIGIN` (the exact frontend origin, including `https://`; comma-separate origins if needed).
+2. Deploy the API with **Root Directory** `server` and Node.js 20 or newer. Configure `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN` (the exact frontend origin, including `https://`; comma-separate origins if needed), and the three Cloudinary variables above if profile photo uploads are needed.
 3. Add `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and optionally `EMAIL_FROM` to the API project's environment variables. Configure the values for Production and Preview as needed, then redeploy both projects.
 
 ### Alternative: Render API
@@ -124,7 +129,7 @@ The root `render.yaml` remains available if you prefer a long-running API on Ren
 cd server && npm install && npm test
 ```
 
-Uses an in-memory MongoDB. Covers first-run setup, password hashing, gender/profile fields, role permissions on admin/HR endpoints, single check-in per day, employee-only leave applications and approvals, salary → payroll → payslip PDF access rules, announcements → notifications, audit log entries, role-specific dashboards and the AI leave-draft fallback.
+Uses an in-memory MongoDB. Covers first-run setup, password hashing, gender/profile fields, profile photo upload validation and configuration, role permissions on admin/HR endpoints, single check-in per day, employee-only leave applications and approvals, salary → payroll → payslip PDF access rules, announcements → notifications, audit log entries, role-specific dashboards and the AI leave-draft fallback.
 
 ## Manual test checklist
 
