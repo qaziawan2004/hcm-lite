@@ -270,7 +270,7 @@ a { color: var(--pine-3); } :focus-visible { outline-color: var(--pine-3); }
 .employee-card-actions { display: flex; justify-content: flex-end; margin-top: .75rem; }
 .employee-action-list { display: grid; gap: .55rem; }
 .employee-action-list .btn { width: 100%; text-align: left; }
-.tbl th:last-child, .tbl td:last-child { width: 76px; text-align: center; }
+.employee-table th:last-child, .employee-table td:last-child { width: 76px; text-align: center; }
 .tbl td { border-bottom-color: #edf0f6; }
 .tbl tbody tr:hover { background: #f8faff; }
 
@@ -283,7 +283,7 @@ a { color: var(--pine-3); } :focus-visible { outline-color: var(--pine-3); }
   .employee-search { flex-basis: 100%; }
   .employee-toolbar select { flex: 1 1 145px; }
   .employee-view-toggle { margin-left: auto; }
-  .tbl th:last-child, .tbl td:last-child { width: 62px; }
+  .employee-table th:last-child, .employee-table td:last-child { width: 62px; }
 }
 @media (max-width: 600px) {
   .employee-stats { gap: .55rem; }
