@@ -51,7 +51,7 @@ export default function Employees() {
   const { user: me, company } = useAuth();
   const toast = useToast();
   const [q, setQ] = useState(''); const [department, setDept] = useState(''); const [status, setStatus] = useState(''); const [sort, setSort] = useState('joined-desc'); const [view, setView] = useState('list'); const [page, setPage] = useState(1);
-  const [form, setForm] = useState(null); const [confirm, setConfirm] = useState(null); const [pw, setPw] = useState(null); const [history, setHistory] = useState(null); const [terminationReason, setTerminationReason] = useState('');
+  const [form, setForm] = useState(null); const [confirm, setConfirm] = useState(null); const [pw, setPw] = useState(null); const [history, setHistory] = useState(null); const [actionEmployee, setActionEmployee] = useState(null); const [terminationReason, setTerminationReason] = useState('');
   const { data, loading, error, reload } = useApi('/employees', { q: q || undefined, department: department || undefined, status: status || undefined, sort, page });
   const { data: summary, error: summaryError, reload: reloadSummary } = useApi('/employees/summary');
   const refresh = () => { reload(); reloadSummary(); };
@@ -77,13 +77,13 @@ export default function Employees() {
     } catch (e) { toast(errMsg(e), 'err'); }
   };
   const reset = async (u) => { try { const r = await api.post(`/employees/${u._id}/reset-password`); setPw({ user: u, pw: r.data.temporaryPassword }); } catch (e) { toast(errMsg(e), 'err'); } setConfirm(null); };
-  const renderActions = (u) => canManage(me, u) && <div className="employee-actions">
-    <button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
-    {!!u.statusHistory?.length && <button className="btn ghost sm" onClick={() => setHistory(u)}>Status history</button>}
-    {u._id !== me._id && <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'status' })}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>}
-    {u._id !== me._id && u.status !== 'terminated' && <button className="btn danger sm" onClick={() => { setTerminationReason(''); setConfirm({ u, kind: 'terminate' }); }}>Terminate</button>}
-    <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'reset' })}>Reset password</button>
-  </div>;
+  const renderActions = (u) => canManage(me, u) && <button
+    type="button"
+    className="employee-more"
+    onClick={() => setActionEmployee(u)}
+    aria-label={`More actions for ${u.name}`}
+    title="More actions"
+  >⋮</button>;
   const employeeCards = data?.items.map((u) => <article className="employee-card" key={u._id}>
     <div className="employee-card-top">
       <Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" />
@@ -98,7 +98,7 @@ export default function Employees() {
       <div><dt>Joined</dt><dd>{fmtDate(u.joinDate)}</dd></div>
     </dl>
     {u.terminationDate && <p className="employee-card-terminated">Terminated {fmtDate(u.terminationDate)}</p>}
-    {renderActions(u)}
+    <div className="employee-card-actions">{renderActions(u)}</div>
   </article>);
 
   return (
@@ -140,6 +140,15 @@ export default function Employees() {
             <tbody>{data.items.map((u) => <tr key={u._id} className={u.role === 'admin' ? 'employee-owner-row' : ''}><td data-label="Employee"><div className="row gap"><Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" /><span><strong>{u.name}</strong><br /><small>{u.email}</small></span></div></td><td data-label="Employee ID"><span className="employee-id">{u.employeeId || '—'}</span></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role">{u.role === 'admin' ? <span className="employee-owner-label">Owner</span> : u.role === 'hr' ? 'HR' : 'Employee'}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td><td data-label="Joined date">{fmtDate(u.joinDate)}</td><td data-label="Actions">{renderActions(u)}</td></tr>)}</tbody></table></div>}
         <Pager page={data.page} pages={data.pages} onChange={setPage} /></>}
       {form && <EmployeeForm initial={form._id ? form : null} onClose={() => setForm(null)} onSaved={(created) => { setForm(null); refresh(); if (created) setPw(created); }} />}
+      {actionEmployee && <Modal title={`Actions for ${actionEmployee.name}`} onClose={() => setActionEmployee(null)}>
+        <div className="employee-action-list">
+          <button type="button" className="btn ghost" onClick={() => { setForm(actionEmployee); setActionEmployee(null); }}>Edit</button>
+          {!!actionEmployee.statusHistory?.length && <button type="button" className="btn ghost" onClick={() => { setHistory(actionEmployee); setActionEmployee(null); }}>Status history</button>}
+          {actionEmployee._id !== me._id && <button type="button" className="btn ghost" onClick={() => { setConfirm({ u: actionEmployee, kind: 'status' }); setActionEmployee(null); }}>{actionEmployee.status === 'active' ? 'Deactivate' : 'Activate'}</button>}
+          {actionEmployee._id !== me._id && actionEmployee.status !== 'terminated' && <button type="button" className="btn danger" onClick={() => { setTerminationReason(''); setConfirm({ u: actionEmployee, kind: 'terminate' }); setActionEmployee(null); }}>Terminate</button>}
+          <button type="button" className="btn ghost" onClick={() => { setConfirm({ u: actionEmployee, kind: 'reset' }); setActionEmployee(null); }}>Reset password</button>
+        </div>
+      </Modal>}
       {confirm?.kind === 'status' && <Confirm title={`${confirm.u.status === 'active' ? 'Deactivate' : 'Activate'} ${confirm.u.name}?`} message={confirm.u.status === 'active' ? 'They will no longer be able to sign in or be included in payroll.' : 'They will be able to sign in again.'} danger={confirm.u.status === 'active'} yesLabel={confirm.u.status === 'active' ? 'Deactivate' : 'Activate'} onYes={() => toggle(confirm.u)} onNo={() => setConfirm(null)} />}
       {confirm?.kind === 'terminate' && <Modal title={`Terminate ${confirm.u.name}?`} onClose={() => setConfirm(null)}>
         <p>This records an employment-status change, blocks sign-in, and excludes the employee from active dashboards and future payroll. Existing records are retained.</p>
