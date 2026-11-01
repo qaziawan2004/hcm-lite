@@ -91,10 +91,10 @@ r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginate(req.query);
   const f = employeeFilter(req.query);
   const sort = req.query.sort === 'joined-asc'
-    ? { joinDate: 1, _id: 1 }
+    ? { role: 1, joinDate: 1, _id: 1 }
     : req.query.sort === 'joined-desc'
-      ? { joinDate: -1, _id: 1 }
-      : { employeeId: 1 };
+      ? { role: 1, joinDate: -1, _id: 1 }
+      : { role: 1, employeeId: 1 };
   const [items, total] = await Promise.all([
     User.find(f).populate('statusHistory.changedBy', 'name').sort(sort).skip(skip).limit(limit),
     User.countDocuments(f),
@@ -125,10 +125,10 @@ r.get('/options', authorize('admin', 'hr'), asyncHandler(async (_req, res) =>
 r.get('/export.csv', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   await assignMissingEmployeeIds();
   const sort = req.query.sort === 'joined-asc'
-    ? { joinDate: 1, _id: 1 }
+    ? { role: 1, joinDate: 1, _id: 1 }
     : req.query.sort === 'joined-desc'
-      ? { joinDate: -1, _id: 1 }
-      : { employeeId: 1 };
+      ? { role: 1, joinDate: -1, _id: 1 }
+      : { role: 1, employeeId: 1 };
   const users = await User.find(employeeFilter(req.query)).sort(sort);
   const columns = ['employeeId', 'name', 'email', 'department', 'designation', 'phone', 'joinDate', 'status', 'terminationDate'];
   const rows = [columns, ...users.map((user) => columns.map((key) => user[key]))];
