@@ -84,15 +84,16 @@ r.get('/export.csv', authorize('admin', 'hr'), asyncHandler(async (req, res) => 
 }));
 
 r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
-  const { name, email, role = 'employee', department, designation, phone, joinDate, password } = req.body;
+  const { name, email, role = 'employee', department, designation, phone, gender = '', joinDate, password } = req.body;
   if (!name || !email) throw new HttpError(400, 'Name and email are required.');
   if (!['admin', 'hr', 'employee'].includes(role)) throw new HttpError(400, 'Invalid role.');
+  if (!['', 'male', 'female', 'prefer_not_to_say'].includes(gender)) throw new HttpError(400, 'Choose a valid gender option.');
   if (role !== 'employee' && req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can create HR or admin accounts.');
   ensureEmailConfigured();
   const company = await Company.findOne();
   const temp = password || tempPassword();
   const user = await User.create({
-    name, email, role, department, designation, phone, joinDate: joinDate || undefined, password: temp,
+    name, email, role, department, designation, phone, gender, joinDate: joinDate || undefined, password: temp,
     employeeId: await nextEmployeeId(), mustChangePassword: true, leaveBalance: company ? { annual: company.leaveQuota.annual, sick: company.leaveQuota.sick, casual: company.leaveQuota.casual } : undefined,
   });
   await sendWelcomeEmail(user);
@@ -102,9 +103,11 @@ r.post('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
 }));
 
 r.put('/me/profile', asyncHandler(async (req, res) => {
-  const { phone, name } = req.body;
+  const { phone, name, gender } = req.body;
+  if (gender !== undefined && !['', 'male', 'female', 'prefer_not_to_say'].includes(gender)) throw new HttpError(400, 'Choose a valid gender option.');
   if (phone !== undefined) req.user.phone = phone;
   if (name) req.user.name = name;
+  if (gender !== undefined) req.user.gender = gender;
   await req.user.save();
   await audit(req, 'PROFILE_UPDATED', 'User', req.user._id);
   res.json({ user: req.user });
@@ -122,7 +125,8 @@ r.put('/:id', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   if (!user) throw new HttpError(404, 'Employee not found.');
   if (!canManage(req.user, user)) throw new HttpError(403, 'Only an admin can edit HR or admin accounts.');
   const b = req.body;
-  for (const k of ['name', 'department', 'designation', 'phone', 'joinDate']) if (b[k] !== undefined) user[k] = b[k];
+  if (b.gender !== undefined && !['', 'male', 'female', 'prefer_not_to_say'].includes(b.gender)) throw new HttpError(400, 'Choose a valid gender option.');
+  for (const k of ['name', 'department', 'designation', 'phone', 'gender', 'joinDate']) if (b[k] !== undefined) user[k] = b[k];
   if (b.email) user.email = b.email;
   if (b.role && b.role !== user.role) {
     if (req.user.role !== 'admin') throw new HttpError(403, 'Only an admin can change roles.');

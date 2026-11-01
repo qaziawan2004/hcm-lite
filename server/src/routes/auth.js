@@ -71,12 +71,13 @@ r.get('/setup-status', asyncHandler(async (_req, res) => res.json({ needsSetup: 
 
 r.post('/setup', asyncHandler(async (req, res) => {
   if (await User.countDocuments()) throw new HttpError(403, 'Setup is already complete.');
-  const { companyName, name, email, password } = req.body;
+  const { companyName, name, email, password, gender = '' } = req.body;
   if (!companyName || !name || !email || !password) throw new HttpError(400, 'Company name, your name, email and password are required.');
   if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters.');
+  if (!['', 'male', 'female', 'prefer_not_to_say'].includes(gender)) throw new HttpError(400, 'Choose a valid gender option.');
   ensureEmailConfigured();
   const company = await Company.create({ name: companyName });
-  const user = await User.create({ name, email, password, role: 'admin', employeeId: 'EMP-0001', department: 'Management', designation: 'Administrator',
+  const user = await User.create({ name, email, password, gender, role: 'admin', employeeId: 'EMP-0001', department: 'Management', designation: 'Administrator',
     leaveBalance: { annual: company.leaveQuota.annual, sick: company.leaveQuota.sick, casual: company.leaveQuota.casual } });
   req.user = user; await audit(req, 'COMPANY_SETUP', 'Company', company._id, `Created ${companyName}`);
   await sendWelcomeEmail(user);

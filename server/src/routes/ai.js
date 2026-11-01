@@ -32,6 +32,7 @@ r.post('/summary', asyncHandler(async (req, res) => {
 
 // Works with or without an API key (rule-based fallback), never submits anything.
 r.post('/leave-draft', asyncHandler(async (req, res) => {
+  if (req.user.role !== 'employee') throw new HttpError(403, 'Leave applications are available only in the employee portal.');
   const text = String(req.body.text || '').trim();
   if (text.length < 3) throw new HttpError(400, 'Describe the leave you want, e.g. "sick leave tomorrow".');
   const out = await leaveDraft(req.user, text.slice(0, 500));

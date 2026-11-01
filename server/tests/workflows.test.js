@@ -46,12 +46,16 @@ after(async () => { await mongoose.disconnect(); await mongod.stop(); });
 
 test('first-run setup creates admin, then locks', async () => {
   assert.equal((await api.get('/api/auth/setup-status')).body.needsSetup, true);
-  const r = await api.post('/api/auth/setup').send({ companyName: 'T', name: 'Admin', email: 'a@t.com', password: 'Password1' });
+  assert.equal((await api.post('/api/auth/setup').send({
+    companyName: 'T', name: 'Admin', email: 'a@t.com', password: 'Password1', gender: 'invalid',
+  })).status, 400);
+  const r = await api.post('/api/auth/setup').send({ companyName: 'T', name: 'Admin', email: 'a@t.com', password: 'Password1', gender: 'female' });
   assert.equal(r.status, 201);
   assert.equal(typeof r.body.token, 'undefined');
   assert.ok(sentEmails.some((message) => message.to === 'a@t.com' && message.subject === 'Welcome to HCM Lite'));
   const verified = await api.post('/api/auth/otp/verify').send({ challengeId: r.body.challengeId, code: latestOtp('a@t.com') });
   assert.equal(verified.status, 200);
+  assert.equal(verified.body.user.gender, 'female');
   tok.admin = verified.body.token;
   assert.equal((await api.post('/api/auth/setup').send({ companyName: 'T', name: 'X', email: 'x@t.com', password: 'Password1' })).status, 403);
 });
@@ -110,20 +114,25 @@ test('OTP expiry and resend issue a fresh code', async () => {
   assert.equal((await api.post('/api/auth/otp/verify').send({ challengeId: start.body.challengeId, code: latestOtp('a@t.com') })).status, 200);
 });
 
-test('admin creates HR and employee; HR cannot create admin/HR', async () => {
-  const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1' });
+test('admin creates HR and employee with optional gender; HR cannot create admin/HR', async () => {
+  const hr = await api.post('/api/employees').set(as('admin')).send({ name: 'HR', email: 'hr@t.com', role: 'hr', password: 'Password1', gender: 'female' });
   assert.equal(hr.status, 201);
+  assert.equal(hr.body.user.gender, 'female');
   assert.ok(sentEmails.some((message) => message.to === 'hr@t.com' && message.subject === 'Welcome to HCM Lite'));
   const hrLogin = await signIn('hr@t.com', 'Password1');
   assert.equal(hrLogin.body.user.role, 'hr');
   tok.hr = hrLogin.body.token;
-  const emp = await api.post('/api/employees').set(as('hr')).send({ name: 'Emp', email: 'e@t.com', password: 'Password1' });
+  const emp = await api.post('/api/employees').set(as('hr')).send({ name: 'Emp', email: 'e@t.com', password: 'Password1', gender: 'male' });
   assert.equal(emp.status, 201);
+  assert.equal(emp.body.user.gender, 'male');
+  assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad gender', email: 'bad-gender@t.com', gender: 'invalid' })).status, 400);
   assert.ok(sentEmails.some((message) => message.to === 'e@t.com' && message.subject === 'Welcome to HCM Lite'));
   const employeeLogin = await signIn('e@t.com', 'Password1');
   assert.equal(employeeLogin.body.user.role, 'employee');
   tok.emp = employeeLogin.body.token;
   tok.empId = emp.body.user._id;
+  const updatedProfile = await api.put('/api/employees/me/profile').set(as('emp')).send({ gender: 'female' });
+  assert.equal(updatedProfile.body.user.gender, 'female');
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad', email: 'b@t.com', role: 'hr', password: 'Password1' })).status, 403);
 });
 
@@ -217,11 +226,14 @@ test('leave workflow: apply, overlap blocked, self-approval blocked, HR approves
   assert.equal((await api.patch(`/api/leaves/${apply.body.leave._id}/decision`).set(as('hr')).send({ decision: 'rejected' })).status, 409);
 });
 
-test('HR leave can only be approved by admin', async () => {
+test('only employees can apply for leave; owner and HR accounts handle approvals', async () => {
   const from = nextWeekday(10);
-  const l = await api.post('/api/leaves').set(as('hr')).send({ type: 'casual', from, to: from, reason: 'Errand' });
-  assert.equal((await api.patch(`/api/leaves/${l.body.leave._id}/decision`).set(as('hr')).send({ decision: 'approved' })).status, 403);
-  assert.equal((await api.patch(`/api/leaves/${l.body.leave._id}/decision`).set(as('admin')).send({ decision: 'approved' })).status, 200);
+  const request = { type: 'casual', from, to: from, reason: 'Errand' };
+  assert.equal((await api.post('/api/leaves').set(as('hr')).send(request)).status, 403);
+  assert.equal((await api.post('/api/leaves').set(as('admin')).send(request)).status, 403);
+  assert.equal((await api.get('/api/leaves/balance').set(as('hr'))).status, 403);
+  assert.equal((await api.get('/api/leaves/balance').set(as('admin'))).status, 403);
+  assert.equal((await api.post('/api/ai/leave-draft').set(as('hr')).send({ text: 'Need leave tomorrow' })).status, 403);
 });
 
 test('salary → payroll → payslip PDF, employee sees only own and only once paid', async () => {
@@ -286,7 +298,11 @@ test('dashboards compute from DB; AI leave draft works without API key', async (
   assert.equal((await api.get('/api/dashboard').set(as('emp'))).body.role, 'employee');
   const hrDashboard = await api.get('/api/dashboard').set(as('hr'));
   assert.equal(hrDashboard.body.role, 'hr');
-  assert.equal(Object.hasOwn(hrDashboard.body, 'totalEmployees'), false);
+  assert.equal(Object.hasOwn(hrDashboard.body, 'totalEmployees'), true);
+  assert.equal(Object.hasOwn(hrDashboard.body, 'mine'), true);
+  const employeeDashboard = await api.get('/api/dashboard').set(as('emp'));
+  assert.equal(Object.hasOwn(employeeDashboard.body, 'totalEmployees'), false);
+  assert.equal(employeeDashboard.body.role, 'employee');
   assert.equal((await api.get('/api/attendance').set(as('hr'))).status, 403);
   assert.equal((await api.get('/api/attendance').set(as('admin'))).status, 200);
   const draft = await api.post('/api/ai/leave-draft').set(as('emp')).send({ text: 'I have a fever, need sick leave tomorrow' });

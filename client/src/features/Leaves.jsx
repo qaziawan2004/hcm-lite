@@ -69,24 +69,25 @@ function Approvals() {
 
 export default function Leaves() {
   const { user, refresh } = useAuth();
+  const staff = isStaff(user);
   const [sp, setSp] = useSearchParams();
-  const tab = sp.get('tab') || 'apply';
-  const mine = useApi('/leaves/my');
-  const bal = useApi('/leaves/balance');
+  const tab = staff ? 'approvals' : (sp.get('tab') === 'mine' ? 'mine' : 'apply');
+  const mine = useApi('/leaves/my', undefined, !staff);
+  const bal = useApi('/leaves/balance', undefined, !staff);
   const go = (t) => setSp({ tab: t });
   return (
     <>
-      <PageHeader title="Leaves" sub="Apply for time off and track your requests." />
+      <PageHeader title={staff ? 'Leave approvals' : 'My leave'} sub={staff ? 'Review employee leave applications and record approval decisions.' : 'Apply for time off, check your available balance and track decisions.'} />
       <div className="tabs">
-        <button className={tab === 'apply' ? 'on' : ''} onClick={() => go('apply')}>Apply</button>
-        <button className={tab === 'mine' ? 'on' : ''} onClick={() => go('mine')}>My requests</button>
-        {isStaff(user) && <button className={tab === 'approvals' ? 'on' : ''} onClick={() => go('approvals')}>Approvals</button>}
+        {!staff && <><button className={tab === 'apply' ? 'on' : ''} onClick={() => go('apply')}>Apply</button>
+          <button className={tab === 'mine' ? 'on' : ''} onClick={() => go('mine')}>My requests</button></>}
+        {staff && <button className="on" onClick={() => go('approvals')}>Employee applications</button>}
       </div>
-      {tab === 'apply' && <div className="grid leave-layout">
+      {!staff && tab === 'apply' && <div className="grid leave-layout">
         <ApplyForm balance={bal.data?.balance} onDone={() => { mine.reload(); bal.reload(); refresh(); go('mine'); }} />
         <div className="card"><h2>Your balance</h2>{Object.entries(bal.data?.balance || {}).map(([k, v]) => <div className="bal" key={k}><span>{cap(k)}</span><strong>{v} days</strong></div>)}</div></div>}
-      {tab === 'mine' && (mine.loading ? <Loader /> : <MyLeaves data={mine.data.items} reload={() => { mine.reload(); bal.reload(); }} />)}
-      {tab === 'approvals' && isStaff(user) && <Approvals />}
+      {!staff && tab === 'mine' && (mine.loading ? <Loader /> : <MyLeaves data={mine.data.items} reload={() => { mine.reload(); bal.reload(); }} />)}
+      {staff && <Approvals />}
     </>
   );
 }

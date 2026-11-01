@@ -10,9 +10,13 @@ const r = Router();
 r.use(protect);
 const TYPES = ['annual', 'sick', 'casual', 'unpaid'];
 
-r.get('/balance', asyncHandler(async (req, res) => res.json({ balance: req.user.leaveBalance })));
+r.get('/balance', asyncHandler(async (req, res) => {
+  if (req.user.role !== 'employee') throw new HttpError(403, 'Leave balances are available in the employee portal.');
+  res.json({ balance: req.user.leaveBalance });
+}));
 
 r.post('/', asyncHandler(async (req, res) => {
+  if (req.user.role !== 'employee') throw new HttpError(403, 'Only employees can submit leave applications.');
   const { type, from, to, reason } = req.body;
   if (!TYPES.includes(type)) throw new HttpError(400, 'Choose a valid leave type.');
   if (!isValidDate(from) || !isValidDate(to)) throw new HttpError(400, 'Enter valid start and end dates.');

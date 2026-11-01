@@ -14,7 +14,7 @@ function EmployeeForm({ initial, onClose, onSaved }) {
   const edit = !!initial;
   const departments = company?.departments?.length ? company.departments : DEFAULT_DEPARTMENTS;
   const designations = company?.designations?.length ? company.designations : DEFAULT_DESIGNATIONS;
-  const [f, setF] = useState(initial ? { ...initial } : { name: '', email: '', role: 'employee', department: '', designation: '', phone: '', joinDate: new Date().toLocaleDateString('en-CA') });
+  const [f, setF] = useState(initial ? { ...initial } : { name: '', email: '', role: 'employee', department: '', designation: '', phone: '', gender: '', joinDate: new Date().toLocaleDateString('en-CA') });
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
@@ -31,12 +31,13 @@ function EmployeeForm({ initial, onClose, onSaved }) {
         <div className="form-grid">
           <Field label="Full name"><input value={f.name} onChange={set('name')} required /></Field>
           <Field label="Work email"><input type="email" value={f.email} onChange={set('email')} required /></Field>
+          <Field label="Gender (optional)"><select value={f.gender || ''} onChange={set('gender')}><option value="">Prefer not to specify</option><option value="female">Female</option><option value="male">Male</option><option value="prefer_not_to_say">Prefer not to say</option></select></Field>
           <Field label="Department"><select value={f.department} onChange={set('department')}><option value="">Select…</option>{departments.map((d) => <option key={d}>{d}</option>)}</select></Field>
           <Field label="Designation"><select value={f.designation} onChange={set('designation')}><option value="">Select…</option>{designations.map((d) => <option key={d}>{d}</option>)}</select></Field>
           <Field label="Phone"><input value={f.phone} onChange={set('phone')} /></Field>
           <Field label="Join date"><input type="date" value={f.joinDate} onChange={set('joinDate')} /></Field>
-          <Field label="Role" hint={me.role !== 'admin' ? 'Only an admin can assign HR or admin roles.' : undefined}>
-            <select value={f.role} onChange={set('role')} disabled={me.role !== 'admin'}><option value="employee">Employee</option><option value="hr">HR</option><option value="admin">Admin</option></select></Field>
+          <Field label="Role" hint={me.role !== 'admin' ? 'Only the owner can assign HR or owner roles.' : undefined}>
+            <select value={f.role} onChange={set('role')} disabled={me.role !== 'admin'}><option value="employee">Employee</option><option value="hr">HR</option><option value="admin">Owner</option></select></Field>
         </div>
         {!edit && <small>A temporary password is generated and shown once after you save.</small>}
         <div className="row gap end" style={{ marginTop: '1rem' }}><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" disabled={busy}>{busy ? 'Saving…' : edit ? 'Save changes' : 'Register'}</button></div>
@@ -85,7 +86,7 @@ export default function Employees() {
       {error && <div className="error">{error}</div>}
       {loading && !data ? <Loader /> : !data?.items.length ? <div className="card"><Empty title="No employees found">Try a different search, or register a new employee.</Empty></div> : <>
         <div className="table-wrap"><table className="tbl"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Role</th><th>Joined</th><th>Status</th><th /></tr></thead>
-          <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="ID">{u.employeeId}</td><td data-label="Name">{u.name}<br /><small>{u.email}</small></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role"><Badge>{u.role}</Badge></td><td data-label="Joined">{fmtDate(u.joinDate)}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td>
+          <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="ID">{u.employeeId}</td><td data-label="Name">{u.name}<br /><small>{u.email}</small></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role"><Badge>{u.role === 'admin' ? 'Owner' : u.role === 'hr' ? 'HR' : 'Employee'}</Badge></td><td data-label="Joined">{fmtDate(u.joinDate)}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td>
             <td data-label="">{canManage(me, u) && <div className="row gap wrap"><button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
               {!!u.statusHistory?.length && <button className="btn ghost sm" onClick={() => setHistory(u)}>Status history</button>}
               {u._id !== me._id && <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'status' })}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>}

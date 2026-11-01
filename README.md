@@ -53,7 +53,7 @@ Configure SMTP on the **server** deployment using `SMTP_HOST`, `SMTP_PORT`, `SMT
 | Register / edit employees | all roles | employees only | no |
 | Attendance check-in/out | yes | yes | yes |
 | Attendance reports | all | all | own |
-| Apply for leave | yes | yes | yes |
+| Apply for leave | no | no | yes |
 | Approve leave | everyone | employees only | no |
 | Salary + run payroll | yes | yes | no |
 | Delete unpaid payroll | yes | no | no |
@@ -62,7 +62,7 @@ Configure SMTP on the **server** deployment using `SMTP_HOST`, `SMTP_PORT`, `SMT
 | Audit logs | yes | no | no |
 | AI assistant | company-wide data | company-wide data | own data only |
 
-Nobody can approve their own leave. HR and admin leave requests are approved by an admin.
+Only employees can submit leave applications. HR and the owner review employee requests; owner and HR accounts do not have employee leave-application screens.
 
 ## Business rules
 
@@ -124,7 +124,7 @@ The root `render.yaml` remains available if you prefer a long-running API on Ren
 cd server && npm install && npm test
 ```
 
-Uses an in-memory MongoDB. Covers first-run setup, password hashing, role permissions on admin/HR endpoints, single check-in per day, the leave workflow (overlap, self-approval, HR vs admin approval, balance deduction), salary → payroll → payslip PDF access rules, announcements → notifications, audit log entries, dashboards and the AI leave-draft fallback.
+Uses an in-memory MongoDB. Covers first-run setup, password hashing, gender/profile fields, role permissions on admin/HR endpoints, single check-in per day, employee-only leave applications and approvals, salary → payroll → payslip PDF access rules, announcements → notifications, audit log entries, role-specific dashboards and the AI leave-draft fallback.
 
 ## Manual test checklist
 

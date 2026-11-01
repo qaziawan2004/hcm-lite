@@ -15,7 +15,7 @@ export default function Login() {
   const { login, setup } = useAuth();
   const nav = useNavigate();
   const [state, setState] = useState('checking'); // checking | down | setup | login
-  const [f, setF] = useState({ companyName: '', name: '', email: '', password: '' });
+  const [f, setF] = useState({ companyName: '', name: '', email: '', password: '', gender: '' });
   const [err, setErr] = useState('');
   const [connectionError, setConnectionError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -75,11 +75,12 @@ export default function Login() {
         {(state === 'setup' || state === 'login') && (
           <form className="auth-card" onSubmit={submit}>
             <h2>{state === 'setup' ? 'Set up your company' : 'Welcome back'}</h2>
-            <p className="muted" style={{ marginTop: 0 }}>{state === 'setup' ? 'This is a fresh install. Create your company and the first admin account. Admins can add HR accounts, and HR or admins can add employees.' : 'Sign in with your work account. Your name and verified account role will appear after sign-in.'}</p>
+            <p className="muted" style={{ marginTop: 0 }}>{state === 'setup' ? 'This is a fresh install. Create your company and the owner account. The owner can add HR accounts, and HR or the owner can register employees.' : 'Sign in with your work account. Your initials and role appear in your workspace after sign-in.'}</p>
             {err && <div className="error" role="alert">{err}</div>}
             {state === 'setup' && <>
               <Field label="Company name"><input value={f.companyName} onChange={set('companyName')} required /></Field>
-              <Field label="Your full name"><input value={f.name} onChange={set('name')} required autoComplete="name" /></Field>
+              <Field label="Owner full name"><input value={f.name} onChange={set('name')} required autoComplete="name" /></Field>
+              <Field label="Gender (optional)"><select value={f.gender} onChange={set('gender')}><option value="">Prefer not to specify</option><option value="female">Female</option><option value="male">Male</option><option value="prefer_not_to_say">Prefer not to say</option></select></Field>
             </>}
             <Field label="Work email"><input type="email" value={f.email} onChange={set('email')} required autoComplete="username" /></Field>
             <Field label="Password" hint={state === 'setup' ? 'At least 8 characters.' : undefined}><input type="password" value={f.password} onChange={set('password')} required minLength={state === 'setup' ? 8 : undefined} autoComplete={state === 'setup' ? 'new-password' : 'current-password'} /></Field>

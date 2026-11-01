@@ -60,11 +60,11 @@ export default function DashboardLayout() {
             const items = links.filter(([, , , roles]) => roles.includes(user.role));
             return items.length ? (
               <div key={group}><div className="nav-group">{group}</div>
-                {items.map(([to, label, icon]) => <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}><Icon n={icon} />{label}</NavLink>)}
+                {items.map(([to, label, icon]) => <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}><Icon n={icon} />{to === '/leaves' && user.role !== 'employee' ? 'Leave approvals' : label}</NavLink>)}
               </div>) : null;
           })}
         </nav>
-        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name || 'Complete your profile'}</strong><br /><small>Signed in as {user.role === 'hr' ? 'HR' : user.role[0].toUpperCase() + user.role.slice(1)}</small></div></div>
+        <div className="who"><span className="avatar">{initials(user.name)}</span><div><strong>{user.name || 'Complete your profile'}</strong><br /><small>Signed in as {user.role === 'admin' ? 'Owner' : user.role === 'hr' ? 'HR' : 'Employee'}</small></div></div>
       </aside>
       <div className="main">
         <header className="top">
@@ -72,6 +72,10 @@ export default function DashboardLayout() {
             <span className="muted">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
           <div className="row gap">
             <button className="bell" onClick={() => nav('/notifications')} aria-label={`Notifications, ${unread} unread`}>🔔{unread > 0 && <i>{unread}</i>}</button>
+            <button type="button" className="top-profile" onClick={() => nav('/profile')} aria-label={`Open ${user.name || 'your'} profile`}>
+              <span className="avatar">{initials(user.name)}</span>
+              <span className="top-profile-name">{user.name}<small>{user.role === 'admin' ? 'Owner' : user.role === 'hr' ? 'HR' : 'Employee'}</small></span>
+            </button>
             <button className="btn ghost sm" onClick={() => { logout(); nav('/login'); }}>Sign out</button>
           </div>
         </header>

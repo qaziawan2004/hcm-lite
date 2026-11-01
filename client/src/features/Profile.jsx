@@ -9,10 +9,11 @@ export default function Profile() {
   const toast = useToast();
   const [name, setName] = useState(user.name || '');
   const [phone, setPhone] = useState(user.phone || '');
+  const [gender, setGender] = useState(user.gender || '');
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [err, setErr] = useState('');
 
-  const saveProfile = async (e) => { e.preventDefault(); try { const { data } = await api.put('/employees/me/profile', { name: name.trim(), phone }); setUser(data.user); toast('Profile updated.'); } catch (x) { toast(errMsg(x), 'err'); } };
+  const saveProfile = async (e) => { e.preventDefault(); try { const { data } = await api.put('/employees/me/profile', { name: name.trim(), phone, gender }); setUser(data.user); toast('Profile updated.'); } catch (x) { toast(errMsg(x), 'err'); } };
   const changePw = async (e) => {
     e.preventDefault(); setErr('');
     if (pw.newPassword !== pw.confirm) return setErr('The new passwords do not match.');
@@ -24,9 +25,9 @@ export default function Profile() {
       <PageHeader title="My profile" />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <form className="card" onSubmit={saveProfile}><h2>Personal details</h2>
-          <div className="bal"><span>Employee ID</span><strong>{user.employeeId}</strong></div><div className="bal"><span>Email</span><strong>{user.email}</strong></div><div className="bal"><span>Role</span><Badge>{user.role}</Badge></div>
+          <div className="bal"><span>Employee ID</span><strong>{user.employeeId}</strong></div><div className="bal"><span>Email</span><strong>{user.email}</strong></div><div className="bal"><span>Role</span><Badge>{user.role === 'admin' ? 'Owner' : user.role === 'hr' ? 'HR' : 'Employee'}</Badge></div>
           <div className="bal"><span>Department</span><strong>{user.department || '—'}</strong></div><div className="bal"><span>Designation</span><strong>{user.designation || '—'}</strong></div><div className="bal"><span>Joined</span><strong>{fmtDate(user.joinDate)}</strong></div>
-          <div style={{ marginTop: '1rem' }}><Field label="Full name"><input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" /></Field><Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} /></Field><button className="btn">Save changes</button></div></form>
+          <div style={{ marginTop: '1rem' }}><Field label="Full name"><input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" /></Field><Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} /></Field><Field label="Gender (optional)"><select value={gender} onChange={(e) => setGender(e.target.value)}><option value="">Prefer not to specify</option><option value="female">Female</option><option value="male">Male</option><option value="prefer_not_to_say">Prefer not to say</option></select></Field><button className="btn">Save changes</button></div></form>
         <form className="card" onSubmit={changePw}><h2>Change password</h2>
           {err && <div className="error" role="alert">{err}</div>}
           <Field label="Current password"><input type="password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} required autoComplete="current-password" /></Field>

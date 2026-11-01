@@ -119,6 +119,9 @@ h1 { font-size: 1.75rem; font-weight: 800; }
 .side .who { display: flex; gap: .7rem; align-items: center; color: #dbe4fb; border-top: 1px solid rgba(255,255,255,.1); }
 .side .who small { color: #8d9cc2; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #2f5bea, #19c3a4); display: grid; place-items: center; font-weight: 800; color: #fff; font-size: .85rem; flex: none; }
+.top-profile { display: flex; align-items: center; gap: .55rem; border: 0; background: transparent; padding: 0 .25rem; color: inherit; text-align: left; cursor: pointer; }
+.top-profile-name { font-size: .84rem; font-weight: 700; line-height: 1.15; }
+.top-profile-name small { display: block; color: var(--muted); font-weight: 500; margin-top: .2rem; }
 .top { background: rgba(255,255,255,.85); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .scrim { position: fixed; inset: 0; background: rgba(8,16,40,.5); z-index: 25; }
 .btn { border-radius: 10px; box-shadow: 0 1px 2px rgba(47,91,234,.3); transition: background .15s, transform .05s; } .btn:active:not(:disabled) { transform: translateY(1px); }
