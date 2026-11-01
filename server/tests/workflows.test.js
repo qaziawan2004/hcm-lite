@@ -132,6 +132,10 @@ test('admin creates HR and employee with optional gender; HR cannot create admin
   assert.equal(employeeLogin.body.user.role, 'employee');
   tok.emp = employeeLogin.body.token;
   tok.empId = emp.body.user._id;
+  const summary = await api.get('/api/employees/summary').set(as('hr'));
+  assert.equal(summary.status, 200);
+  assert.deepEqual(summary.body, { total: 3, active: 3, inactive: 0, onLeave: 0 });
+  assert.equal((await api.get('/api/employees/summary').set(as('emp'))).status, 403);
   const updatedProfile = await api.put('/api/employees/me/profile').set(as('emp')).send({ gender: 'female' });
   assert.equal(updatedProfile.body.user.gender, 'female');
   assert.equal((await api.post('/api/employees').set(as('hr')).send({ name: 'Bad', email: 'b@t.com', role: 'hr', password: 'Password1' })).status, 403);
@@ -189,8 +193,8 @@ test('profile photo upload validates image content and updates the signed-in use
 test('employee list assigns IDs to legacy employees without IDs', async () => {
   const User = (await import('../src/models/User.js')).default;
   await User.create([
-    { name: 'Legacy One', email: 'legacy-one@t.com', password: 'Password1' },
-    { name: 'Legacy Two', email: 'legacy-two@t.com', password: 'Password1' },
+    { name: 'Legacy One', email: 'legacy-one@t.com', password: 'Password1', joinDate: '2020-01-01' },
+    { name: 'Legacy Two', email: 'legacy-two@t.com', password: 'Password1', joinDate: '2022-01-01' },
   ]);
 
   try {
@@ -203,6 +207,8 @@ test('employee list assigns IDs to legacy employees without IDs', async () => {
         .sort(),
       ['EMP-0004', 'EMP-0005']
     );
+    const joined = await api.get('/api/employees?q=Legacy&sort=joined-asc').set(as('admin'));
+    assert.deepEqual(joined.body.items.map((user) => user.name), ['Legacy One', 'Legacy Two']);
   } finally {
     await User.deleteMany({ email: { $in: ['legacy-one@t.com', 'legacy-two@t.com'] } });
   }

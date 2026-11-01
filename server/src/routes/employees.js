@@ -7,6 +7,7 @@ import { HttpError, asyncHandler, paginate } from '../utils/http.js';
 import { audit, notify } from '../services/log.js';
 import { ensureEmailConfigured, sendWelcomeEmail } from '../services/email.js';
 import { today } from '../utils/dates.js';
+import Leave from '../models/Leave.js';
 import multer from 'multer';
 import { cloudinaryConfigured, uploadProfilePhoto } from '../services/cloudinary.js';
 
@@ -89,11 +90,32 @@ r.get('/', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   await assignMissingEmployeeIds();
   const { page, limit, skip } = paginate(req.query);
   const f = employeeFilter(req.query);
+  const sort = req.query.sort === 'joined-asc'
+    ? { joinDate: 1, _id: 1 }
+    : req.query.sort === 'joined-desc'
+      ? { joinDate: -1, _id: 1 }
+      : { employeeId: 1 };
   const [items, total] = await Promise.all([
-    User.find(f).populate('statusHistory.changedBy', 'name').sort({ employeeId: 1 }).skip(skip).limit(limit),
+    User.find(f).populate('statusHistory.changedBy', 'name').sort(sort).skip(skip).limit(limit),
     User.countDocuments(f),
   ]);
   res.json({ items, total, page, pages: Math.ceil(total / limit) });
+}));
+
+r.get('/summary', authorize('admin', 'hr'), asyncHandler(async (_req, res) => {
+  const currentDate = today();
+  const onLeaveIds = await Leave.distinct('user', {
+    status: 'approved',
+    from: { $lte: currentDate },
+    to: { $gte: currentDate },
+  });
+  const [total, active, inactive, onLeave] = await Promise.all([
+    User.countDocuments({}),
+    User.countDocuments({ status: 'active' }),
+    User.countDocuments({ status: 'inactive' }),
+    User.countDocuments({ _id: { $in: onLeaveIds }, status: 'active' }),
+  ]);
+  res.json({ total, active, inactive, onLeave });
 }));
 
 // Lightweight list for dropdowns
@@ -102,7 +124,12 @@ r.get('/options', authorize('admin', 'hr'), asyncHandler(async (_req, res) =>
 
 r.get('/export.csv', authorize('admin', 'hr'), asyncHandler(async (req, res) => {
   await assignMissingEmployeeIds();
-  const users = await User.find(employeeFilter(req.query)).sort({ employeeId: 1 });
+  const sort = req.query.sort === 'joined-asc'
+    ? { joinDate: 1, _id: 1 }
+    : req.query.sort === 'joined-desc'
+      ? { joinDate: -1, _id: 1 }
+      : { employeeId: 1 };
+  const users = await User.find(employeeFilter(req.query)).sort(sort);
   const columns = ['employeeId', 'name', 'email', 'department', 'designation', 'phone', 'joinDate', 'status', 'terminationDate'];
   const rows = [columns, ...users.map((user) => columns.map((key) => user[key]))];
   res.type('text/csv; charset=utf-8');

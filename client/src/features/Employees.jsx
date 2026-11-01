@@ -50,22 +50,24 @@ function EmployeeForm({ initial, onClose, onSaved }) {
 export default function Employees() {
   const { user: me, company } = useAuth();
   const toast = useToast();
-  const [q, setQ] = useState(''); const [department, setDept] = useState(''); const [status, setStatus] = useState(''); const [page, setPage] = useState(1);
+  const [q, setQ] = useState(''); const [department, setDept] = useState(''); const [status, setStatus] = useState(''); const [sort, setSort] = useState('joined-desc'); const [view, setView] = useState('list'); const [page, setPage] = useState(1);
   const [form, setForm] = useState(null); const [confirm, setConfirm] = useState(null); const [pw, setPw] = useState(null); const [history, setHistory] = useState(null); const [terminationReason, setTerminationReason] = useState('');
-  const { data, loading, error, reload } = useApi('/employees', { q: q || undefined, department: department || undefined, status: status || undefined, page });
+  const { data, loading, error, reload } = useApi('/employees', { q: q || undefined, department: department || undefined, status: status || undefined, sort, page });
+  const { data: summary, error: summaryError, reload: reloadSummary } = useApi('/employees/summary');
+  const refresh = () => { reload(); reloadSummary(); };
 
-  const toggle = async (u) => { try { await api.patch(`/employees/${u._id}/status`, { status: u.status === 'active' ? 'inactive' : 'active' }); toast('Status updated.'); reload(); } catch (e) { toast(errMsg(e), 'err'); } setConfirm(null); };
+  const toggle = async (u) => { try { await api.patch(`/employees/${u._id}/status`, { status: u.status === 'active' ? 'inactive' : 'active' }); toast('Status updated.'); refresh(); } catch (e) { toast(errMsg(e), 'err'); } setConfirm(null); };
   const terminate = async () => {
     try {
       await api.patch(`/employees/${confirm.u._id}/status`, { status: 'terminated', reason: terminationReason });
       toast(`${confirm.u.name} was terminated and removed from active dashboards and future payroll.`);
-      setConfirm(null); setTerminationReason(''); reload();
+      setConfirm(null); setTerminationReason(''); refresh();
     } catch (e) { toast(errMsg(e), 'err'); }
   };
   const exportCsv = async () => {
     try {
       const { data: file } = await api.get('/employees/export.csv', {
-        params: { q: q || undefined, department: department || undefined, status: status || undefined },
+        params: { q: q || undefined, department: department || undefined, status: status || undefined, sort },
         responseType: 'blob',
       });
       const url = URL.createObjectURL(file);
@@ -75,26 +77,69 @@ export default function Employees() {
     } catch (e) { toast(errMsg(e), 'err'); }
   };
   const reset = async (u) => { try { const r = await api.post(`/employees/${u._id}/reset-password`); setPw({ user: u, pw: r.data.temporaryPassword }); } catch (e) { toast(errMsg(e), 'err'); } setConfirm(null); };
+  const renderActions = (u) => canManage(me, u) && <div className="employee-actions">
+    <button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
+    {!!u.statusHistory?.length && <button className="btn ghost sm" onClick={() => setHistory(u)}>Status history</button>}
+    {u._id !== me._id && <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'status' })}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>}
+    {u._id !== me._id && u.status !== 'terminated' && <button className="btn danger sm" onClick={() => { setTerminationReason(''); setConfirm({ u, kind: 'terminate' }); }}>Terminate</button>}
+    <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'reset' })}>Reset password</button>
+  </div>;
+  const employeeCards = data?.items.map((u) => <article className="employee-card" key={u._id}>
+    <div className="employee-card-top">
+      <Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" />
+      <Badge>{u.status}</Badge>
+    </div>
+    <div className="employee-card-name"><strong>{u.name}</strong><span>{u.email}</span></div>
+    <div className="employee-card-id">{u.employeeId || 'No employee ID'}</div>
+    <dl className="employee-card-details">
+      <div><dt>Department</dt><dd>{u.department || '—'}</dd></div>
+      <div><dt>Designation</dt><dd>{u.designation || '—'}</dd></div>
+      <div><dt>Role</dt><dd>{u.role === 'admin' ? 'Owner' : u.role === 'hr' ? 'HR' : 'Employee'}</dd></div>
+      <div><dt>Joined</dt><dd>{fmtDate(u.joinDate)}</dd></div>
+    </dl>
+    {u.terminationDate && <p className="employee-card-terminated">Terminated {fmtDate(u.terminationDate)}</p>}
+    {renderActions(u)}
+  </article>);
 
   return (
     <>
       <PageHeader title="Employees" sub="Register people, update their details and manage access."><button className="btn ghost" onClick={exportCsv}>Export CSV</button><button className="btn accent" onClick={() => setForm({})}>Register employee</button></PageHeader>
-      <div className="filters">
-        <input placeholder="Search name, email or ID" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label="Search" />
+      {summaryError && <div className="error" role="alert">{summaryError}</div>}
+      <section className="employee-stats" aria-label="Employee overview">
+        <article className="employee-stat">
+          <span className="employee-stat-icon blue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>
+          <div><strong>{summary?.total ?? '—'}</strong><span>Total employees</span></div>
+        </article>
+        <article className="employee-stat">
+          <span className="employee-stat-icon green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /><circle cx="12" cy="12" r="10" /></svg></span>
+          <div><strong>{summary?.active ?? '—'}</strong><span>Active employees</span></div>
+        </article>
+        <article className="employee-stat">
+          <span className="employee-stat-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>
+          <div><strong>{summary?.onLeave ?? '—'}</strong><span>On leave today</span></div>
+        </article>
+        <article className="employee-stat">
+          <span className="employee-stat-icon violet" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" /><circle cx="19" cy="17" r="2" /></svg></span>
+          <div><strong>{summary?.inactive ?? '—'}</strong><span>Inactive employees</span></div>
+        </article>
+      </section>
+      <div className="employee-toolbar">
+        <label className="employee-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg><input placeholder="Search by name, email or employee ID…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label="Search employees" /></label>
         <select value={department} onChange={(e) => { setDept(e.target.value); setPage(1); }} aria-label="Department"><option value="">All departments</option>{(company?.departments?.length ? company.departments : DEFAULT_DEPARTMENTS).map((d) => <option key={d}>{d}</option>)}</select>
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status"><option value="">Any status</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="terminated">Terminated</option></select>
+        <select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} aria-label="Sort by join date"><option value="joined-desc">Newest joined</option><option value="joined-asc">Oldest joined</option><option value="employee-id">Employee ID</option></select>
+        <div className="employee-view-toggle" role="group" aria-label="Employee display">
+          <button type="button" className={view === 'grid' ? 'selected' : ''} onClick={() => setView('grid')} aria-label="Grid view" aria-pressed={view === 'grid'}>▦</button>
+          <button type="button" className={view === 'list' ? 'selected' : ''} onClick={() => setView('list')} aria-label="List view" aria-pressed={view === 'list'}>☷</button>
+        </div>
       </div>
       {error && <div className="error">{error}</div>}
       {loading && !data ? <Loader /> : !data?.items.length ? <div className="card"><Empty title="No employees found">Try a different search, or register a new employee.</Empty></div> : <>
-        <div className="table-wrap"><table className="tbl"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Role</th><th>Joined</th><th>Status</th><th /></tr></thead>
-          <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="ID">{u.employeeId}</td><td data-label="Name"><div className="row gap"><Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" /><span>{u.name}<br /><small>{u.email}</small></span></div></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role"><Badge>{u.role === 'admin' ? 'Owner' : u.role === 'hr' ? 'HR' : 'Employee'}</Badge></td><td data-label="Joined">{fmtDate(u.joinDate)}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td>
-            <td data-label="">{canManage(me, u) && <div className="row gap wrap"><button className="btn ghost sm" onClick={() => setForm(u)}>Edit</button>
-              {!!u.statusHistory?.length && <button className="btn ghost sm" onClick={() => setHistory(u)}>Status history</button>}
-              {u._id !== me._id && <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'status' })}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>}
-              {u._id !== me._id && u.status !== 'terminated' && <button className="btn danger sm" onClick={() => { setTerminationReason(''); setConfirm({ u, kind: 'terminate' }); }}>Terminate</button>}
-              <button className="btn ghost sm" onClick={() => setConfirm({ u, kind: 'reset' })}>Reset password</button></div>}</td></tr>)}</tbody></table></div>
+        {view === 'grid' ? <div className="employee-card-grid">{employeeCards}</div> :
+          <div className="table-wrap"><table className="tbl"><thead><tr><th>Employee</th><th>Employee ID</th><th>Department</th><th>Designation</th><th>Role</th><th>Status</th><th>Joined date</th><th>Actions</th></tr></thead>
+            <tbody>{data.items.map((u) => <tr key={u._id}><td data-label="Employee"><div className="row gap"><Avatar name={u.name} src={u.avatarUrl} className="employee-avatar" /><span><strong>{u.name}</strong><br /><small>{u.email}</small></span></div></td><td data-label="Employee ID"><span className="employee-id">{u.employeeId || '—'}</span></td><td data-label="Department">{u.department || '—'}</td><td data-label="Designation">{u.designation || '—'}</td><td data-label="Role">{u.role === 'admin' ? 'Owner' : u.role === 'hr' ? 'HR' : 'Employee'}</td><td data-label="Status"><Badge>{u.status}</Badge>{u.terminationDate && <><br /><small>{fmtDate(u.terminationDate)}</small></>}</td><td data-label="Joined date">{fmtDate(u.joinDate)}</td><td data-label="Actions">{renderActions(u)}</td></tr>)}</tbody></table></div>}
         <Pager page={data.page} pages={data.pages} onChange={setPage} /></>}
-      {form && <EmployeeForm initial={form._id ? form : null} onClose={() => setForm(null)} onSaved={(created) => { setForm(null); reload(); if (created) setPw(created); }} />}
+      {form && <EmployeeForm initial={form._id ? form : null} onClose={() => setForm(null)} onSaved={(created) => { setForm(null); refresh(); if (created) setPw(created); }} />}
       {confirm?.kind === 'status' && <Confirm title={`${confirm.u.status === 'active' ? 'Deactivate' : 'Activate'} ${confirm.u.name}?`} message={confirm.u.status === 'active' ? 'They will no longer be able to sign in or be included in payroll.' : 'They will be able to sign in again.'} danger={confirm.u.status === 'active'} yesLabel={confirm.u.status === 'active' ? 'Deactivate' : 'Activate'} onYes={() => toggle(confirm.u)} onNo={() => setConfirm(null)} />}
       {confirm?.kind === 'terminate' && <Modal title={`Terminate ${confirm.u.name}?`} onClose={() => setConfirm(null)}>
         <p>This records an employment-status change, blocks sign-in, and excludes the employee from active dashboards and future payroll. Existing records are retained.</p>
