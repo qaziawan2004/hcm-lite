@@ -15,6 +15,10 @@ export function CheckInCard({ onChange }) {
   const [now, setNow] = useState(new Date());
   const [busy, setBusy] = useState(false);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  const formattedTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).formatToParts(now);
+  const clockTime = formattedTime.filter((part) => part.type !== 'dayPeriod')
+    .map((part) => part.type === 'literal' ? part.value.trim() : part.value).join('');
+  const period = formattedTime.find((part) => part.type === 'dayPeriod')?.value;
   const rec = data?.record;
   const act = async (path) => {
     setBusy(true);
@@ -24,7 +28,7 @@ export function CheckInCard({ onChange }) {
   return (
     <div className="clock">
       <div>
-        <div className="time">{now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}</div>
+        <div className="time">{clockTime}<span className="time-period">{period}</span></div>
         <small>{rec ? `Checked in at ${fmtTime(rec.checkIn)}${rec.status === 'late' ? ' (late)' : ''}${rec.checkOut ? ` · out at ${fmtTime(rec.checkOut)} · ${rec.hours}h` : ''}` : 'You have not checked in yet today.'}</small>
       </div>
       {!rec && <button className="btn accent" disabled={busy} onClick={() => act('check-in')}>Check in</button>}

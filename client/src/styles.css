@@ -42,7 +42,7 @@ a { color: var(--pine-3); } .muted { color: var(--muted); } small { color: var(-
 .stat.good { border-left-color: var(--good); } .stat.warn { border-left-color: var(--saffron); } .stat.bad { border-left-color: var(--bad); } .stat.info { border-left-color: var(--pine-3); }
 .stat-value { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; } .stat-label { color: var(--muted); font-weight: 600; font-size: .85rem; margin-top: .2rem; }
 .clock { background: var(--pine); color: #fff; border-radius: 14px; padding: 1.4rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
-.clock .time { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; } .clock small { color: #a9c7c4; }
+.clock .time { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; } .clock .time-period { display: inline-block; width: 1.6em; margin-left: .3em; letter-spacing: 0; font-variant-numeric: normal; } .clock small { color: #a9c7c4; }
 .bal { display: flex; justify-content: space-between; padding: .45rem 0; border-bottom: 1px dashed var(--line); } .bal:last-child { border: 0; }
 
 /* buttons + forms */
