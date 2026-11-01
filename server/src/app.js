@@ -16,6 +16,7 @@ import notifications from './routes/notifications.js';
 import audit from './routes/audit.js';
 import dashboard from './routes/dashboard.js';
 import ai from './routes/ai.js';
+import recruitment from './routes/recruitment.js';
 
 import { notFound, errorHandler } from './middleware/error.js';
 
@@ -78,6 +79,7 @@ export default function createApp() {
   app.use('/api/audit-logs', audit);
   app.use('/api/dashboard', dashboard);
   app.use('/api/ai', ai);
+  app.use('/api/recruitment', recruitment);
 
   app.use(notFound);
   app.use(errorHandler);

@@ -18,6 +18,7 @@ const Announcements = lazy(() => import('./features/Announcements.jsx'));
 const Notifications = lazy(() => import('./features/Notifications.jsx'));
 const AuditLogs = lazy(() => import('./features/AuditLogs.jsx'));
 const Profile = lazy(() => import('./features/Profile.jsx'));
+const Recruitment = lazy(() => import('./features/Recruitment.jsx'));
 
 function Protected({ roles, children }) {
   const { user, loading } = useAuth();
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="profile" element={<Profile />} />
           <Route path="employees" element={<Protected roles={staff}><Employees /></Protected>} />
+          <Route path="recruitment" element={<Protected roles={staff}><Recruitment /></Protected>} />
           <Route path="salary" element={<Protected roles={staff}><Salary /></Protected>} />
           <Route path="payroll" element={<Protected roles={staff}><Payroll /></Protected>} />
           <Route path="company" element={<Protected roles={['admin']}><Company /></Protected>} />
